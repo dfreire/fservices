@@ -1,6 +1,6 @@
 package mail
 
-type SendRequest struct {
+type SendMailRequest struct {
 	From        string
 	To          []string
 	Cc          []string
@@ -12,5 +12,5 @@ type SendRequest struct {
 }
 
 type Mail interface {
-	Send(request SendRequest) error
+	SendMail(request SendMailRequest) error
 }

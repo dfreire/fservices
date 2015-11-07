@@ -8,11 +8,10 @@ type User struct {
 	Email              string
 	HashedPass         string
 	CreatedAt          time.Time
-	Confirmed          bool
+	ConfirmedAt        time.Time
 	ConfirmationToken  string
-	RequestedReset     bool
-	ResetToken         string
 	RequestedResetAt   time.Time
+	ResetToken         string
 	MustChangePassword bool
 }
 

@@ -16,7 +16,7 @@ type SignupRequest struct {
 	EmailHtmlTemplate string
 }
 
-func Signup(store Store, mailService mail.Mail, request SignupRequest) (confirmationToken string, err error) {
+func Signup(store Store, mailService mail.Mail, appId, request SignupRequest) (confirmationToken string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(request.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
@@ -33,16 +33,64 @@ func Signup(store Store, mailService mail.Mail, request SignupRequest) (confirma
 		return "", err
 	}
 
-	mailSendRequest := mail.SendRequest{
+	sendMailRequest := mail.SendMailRequest{
 		From:    request.EmailFrom,
 		To:      []string{request.Email},
 		Subject: request.EmailSubject,
 		Html:    html,
 	}
 
-	if err := mailService.Send(mailSendRequest); err != nil {
+	if err := mailService.SendMail(sendMailRequest); err != nil {
 		return "", err
 	}
 
 	return confirmationToken, nil
+}
+
+func Signin() {
+
+}
+
+func Signout() {
+
+}
+
+func ForgotPasword() {
+
+}
+
+func ResetPassword() {
+
+}
+
+func ChangePassword() {
+
+}
+
+func ChangeEmail() {
+
+}
+
+func GetAllUsers() {
+
+}
+
+func GetUsersByAppId() {
+
+}
+
+func GetUserById() {
+
+}
+
+func ChangeUserPassword() {
+
+}
+
+func ChangeUserEmail() {
+
+}
+
+func RemoveUserById() {
+
 }
