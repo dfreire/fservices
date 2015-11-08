@@ -18,14 +18,17 @@ const SCHEMA = `
     CREATE SCHEMA IF NOT EXISTS auth;
 
     CREATE TABLE IF NOT EXISTS auth.user (
-       id                     CHAR(36) PRIMARY KEY NOT NULL,
-       appId                  TEXT NOT NULL,
-       email                  TEXT NOT NULL,
-       hashedPass             TEXT NOT NULL,
-       createdAt              TIMESTAMPTZ NOT NULL,
-       confirmationToken      CHAR(36),
-       sentConfirmationMailAt TIMESTAMPTZ,
-       confirmedAt            TIMESTAMPTZ
+       id                      CHAR(36) PRIMARY KEY NOT NULL,
+       appId                   TEXT NOT NULL,
+       email                   TEXT NOT NULL,
+       hashedPass              TEXT NOT NULL,
+       createdAt               TIMESTAMPTZ NOT NULL,
+       -- confirm
+       confirmationToken       CHAR(36),
+       sentConfirmationTokenAt TIMESTAMPTZ,
+       -- reset
+       resetToken              CHAR(36),
+       sentResetTokenAt        TIMESTAMPTZ
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS auth_user_appId_email ON auth.user (appId, email);

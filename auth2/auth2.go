@@ -3,6 +3,7 @@ package auth2
 type Auth interface {
 	Signup(appId, email, password string) (confirmationToken string, err error)
 	ConfirmSignup(confirmationToken string) error
+	ResendConfirmationToken(appId, email string) (confirmationToken string, err error)
 	Signin(appId, email, password string) (sessionToken string, err error)
 	Signout(userId string) error
 	ForgotPasword(appId, email string) (resetToken string, err error)
