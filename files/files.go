@@ -3,13 +3,16 @@ package files
 import (
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 
+	"github.com/Machiel/slugify"
 	"github.com/labstack/echo"
 )
 
 func Upload(c *echo.Context) error {
 	req := c.Request()
-	req.ParseMultipartForm(16 << 20) // Max memory 16 MiB
+	req.ParseMultipartForm(16 * 1024 * 1024)
 
 	// Read files
 	files := req.MultipartForm.File["files"]
@@ -22,7 +25,7 @@ func Upload(c *echo.Context) error {
 		defer src.Close()
 
 		// Destination file
-		dst, err := os.Create(f.Filename)
+		dst, err := os.Create(slugifyFilename(f.Filename))
 		if err != nil {
 			return err
 		}
@@ -32,5 +35,12 @@ func Upload(c *echo.Context) error {
 			return err
 		}
 	}
+
 	return nil
+}
+
+func slugifyFilename(filename string) string {
+	extension := filepath.Ext(filename)
+	name := slugify.Slugify(filename[0 : len(filename)-len(extension)])
+	return strings.Join([]string{name, extension}, "")
 }
