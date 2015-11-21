@@ -1,0 +1,4 @@
+Host     = "smtp.mailgun.org"
+Port     = 587
+Email    = "postmaster@mysandbox.mailgun.org"
+Password = "mypassword"
