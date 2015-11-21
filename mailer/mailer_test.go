@@ -35,19 +35,21 @@ func TestSend(t *testing.T) {
 	if assert.Nil(t, err) {
 		from := randomMailinatorAddress()
 		to := randomMailinatorAddress()
+		subject := randomSubject()
+		body := strings.Join([]string{"<h1>", subject, "</h1>"}, "")
 
 		request := mailer.SendMailRequest{
 			From:    from,
 			To:      []string{to},
-			Subject: "Test Mail",
-			Body:    "<h1>Test Mail</h1>",
+			Subject: subject,
+			Body:    body,
 		}
 
 		mailer := mailer.NewMailer(cfg)
 		err = mailer.Send(request)
 
 		if assert.Nil(t, err) {
-			log.Printf("Sent mail to %s", to)
+			log.Printf("Sent mail %+v", request)
 			// https://api.mailinator.com/api/inbox?to=YYU42xSambKiB2EAtTg8xS@mailinator.com
 			// https://api.mailinator.com/api/email?msgid=1448108946-77611349-kquawg
 		}
@@ -56,4 +58,8 @@ func TestSend(t *testing.T) {
 
 func randomMailinatorAddress() string {
 	return strings.Join([]string{shortuuid.UUID(), "@mailinator.com"}, "")
+}
+
+func randomSubject() string {
+	return strings.Join([]string{"Test", shortuuid.UUID()}, "-")
 }
