@@ -6,6 +6,12 @@ import (
 	"strings"
 )
 
+func PanicIfNotNil(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func RenderTemplate(templateString string, templateValues interface{}) (string, error) {
 	t, err := template.New("").Parse(strings.Join([]string{
 		"{{define \"T\"}}",
