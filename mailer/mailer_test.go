@@ -36,19 +36,11 @@ func TestSend(t *testing.T) {
 		to := randomMailinatorAddress()
 		subject := randomSubject()
 		body := strings.Join([]string{"<h1>", subject, "</h1>"}, "")
-
-		request := SendMailRequest{
-			From:    from,
-			To:      []string{to},
-			Subject: subject,
-			Body:    body,
-		}
-
 		mailer := NewMailer(cfg)
-		err = mailer.Send(request)
+		err = mailer.QuickSend(from, to, subject, body)
 
 		if assert.Nil(t, err) {
-			log.Printf("Sent mail %+v", request)
+			log.Printf("Sent mail to: %s, subject: %s, body: %s", to, subject, body)
 			// https://api.mailinator.com/api/inbox?to=YYU42xSambKiB2EAtTg8xS@mailinator.com
 			// https://api.mailinator.com/api/email?msgid=1448108946-77611349-kquawg
 		}

@@ -9,17 +9,8 @@ import (
 )
 
 type Mailer interface {
-	Send(request SendMailRequest) error
-}
-
-type SendMailRequest struct {
-	From        string
-	To          []string
-	Cc          []string
-	Bcc         []string
-	Subject     string
-	Body        string
-	Attachments []string
+	QuickSend(from, to, subject, body string) error
+	Send(from string, to, cc, bcc []string, subject, body string, attachements []string) error
 }
 
 type mailerImpl struct {
@@ -37,22 +28,24 @@ func NewMailer(cfg SmtpConfig) mailerImpl {
 	return mailerImpl{cfg}
 }
 
-func (self mailerImpl) Send(request SendMailRequest) error {
-	e := email.NewEmail()
+func (self mailerImpl) QuickSend(from, to, subject, body string) error {
+	return self.Send(from, []string{to}, nil, nil, subject, body, nil)
+}
 
-	if request.From != "" {
-		e.From = request.From
+func (self mailerImpl) Send(from string, to, cc, bcc []string, subject, body string, attachments []string) error {
+	e := email.NewEmail()
+	if from != "" {
+		e.From = from
 	} else {
 		e.From = self.cfg.Email
 	}
+	e.To = to
+	e.Cc = cc
+	e.Bcc = bcc
+	e.Subject = subject
+	e.HTML = []byte(body)
 
-	e.To = request.To
-	e.Cc = request.Cc
-	e.Bcc = request.Bcc
-	e.Subject = request.Subject
-	e.HTML = []byte(request.Body)
-
-	for _, attachment := range request.Attachments {
+	for _, attachment := range attachments {
 		e.AttachFile(attachment)
 	}
 
