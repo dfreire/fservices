@@ -1,0 +1,19 @@
+FromEmail = "dario.freire+fservices@gmail.com"
+
+[ConfirmationEmail.en_US]
+Subject = "Signup Confirmation"
+Body = """
+<p>Thank you for signing up!</p>
+<p>Please confirm your account by opening the link:<br />
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>http://example.com/confirm?l=en&ct={{.ConfirmationToken}}</a>
+</p>
+"""
+
+[ConfirmationEmail.pt_PT]
+Subject = "Confirmação de Registo"
+Body = """
+<p>Obrigado pelo seu registo!</p>
+<p>Por favor confirme a sua conta abrindo o link:<br />
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>http://example.com/confirm?l=en&ct={{.ConfirmationToken}}</a>
+</p>
+"""
