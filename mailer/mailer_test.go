@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/BurntSushi/toml"
-	"github.com/dfreire/fservices/mailer"
 	"github.com/renstrom/shortuuid"
 	"github.com/stretchr/testify/assert"
 )
@@ -29,7 +28,7 @@ type mailinatorEmail struct {
 }
 
 func TestSend(t *testing.T) {
-	var cfg mailer.SmtpConfig
+	var cfg SmtpConfig
 	_, err := toml.DecodeFile("mailer_test.secret.toml", &cfg)
 
 	if assert.Nil(t, err) {
@@ -38,14 +37,14 @@ func TestSend(t *testing.T) {
 		subject := randomSubject()
 		body := strings.Join([]string{"<h1>", subject, "</h1>"}, "")
 
-		request := mailer.SendMailRequest{
+		request := SendMailRequest{
 			From:    from,
 			To:      []string{to},
 			Subject: subject,
 			Body:    body,
 		}
 
-		mailer := mailer.NewMailer(cfg)
+		mailer := NewMailer(cfg)
 		err = mailer.Send(request)
 
 		if assert.Nil(t, err) {
