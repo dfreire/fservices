@@ -29,3 +29,11 @@ func RenderTemplate(templateString string, templateValues interface{}) (string, 
 
 	return out.String(), nil
 }
+
+func MustRenderTemplate(templateString string, templateValues interface{}) string {
+	result, err := RenderTemplate(templateString, templateValues)
+	if err != nil {
+		panic(err)
+	}
+	return result
+}
