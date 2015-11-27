@@ -71,20 +71,15 @@ func (self authImpl) Signup(appId, email, password, lang string) error {
 		return err
 	}
 
+	subject := self.cfg.ConfirmationEmail[lang].Subject
+
 	templateValues := struct{ ConfirmationToken string }{confirmationToken}
 	body, err := util.RenderTemplate(self.cfg.ConfirmationEmail[lang].Body, templateValues)
 	if err != nil {
 		return err
 	}
 
-	sendMailRequest := mailer.SendMailRequest{
-		From:    self.cfg.FromEmail,
-		To:      []string{email},
-		Subject: self.cfg.ConfirmationEmail[lang].Subject,
-		Body:    body,
-	}
-
-	if err := self.mailer.Send(sendMailRequest); err != nil {
+	if err := self.mailer.QuickSend(self.cfg.FromEmail, email, subject, body); err != nil {
 		return err
 	}
 
