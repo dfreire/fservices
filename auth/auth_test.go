@@ -3,6 +3,7 @@ package auth2
 import (
 	"database/sql"
 	"testing"
+	"time"
 
 	"github.com/BurntSushi/toml"
 	mailermock "github.com/dfreire/fservices/mailer/mock"
@@ -12,8 +13,7 @@ import (
 )
 
 func TestSignup(t *testing.T) {
-	auth, mailerMock, db := createAuthService()
-	defer dropSchema(db)
+	auth, store, mailerMock := createAuthService()
 
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
@@ -22,12 +22,16 @@ func TestSignup(t *testing.T) {
 
 	assert.NotEmpty(t, confirmationToken)
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
+
+	confirmationKey, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+
+	assert.NotEmpty(t, confirmationKey)
+	assert.True(t, time.Time{}.Equal(confirmedAt))
 }
 
 func TestResendConfirmationMail(t *testing.T) {
-	auth, mailerMock, db := createAuthService()
-	defer dropSchema(db)
-
+	auth, _, mailerMock := createAuthService()
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
 	confirmationToken1, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
@@ -40,22 +44,20 @@ func TestResendConfirmationMail(t *testing.T) {
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 
-func createAuthService() (Auth, *mailermock.MailerMock, *sql.DB) {
+func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	var authConfig AuthConfig
 	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
 	util.PanicIfNotNil(err)
 
 	db, err := sql.Open("postgres", "postgres://drome:@localhost/fservices_test?sslmode=disable")
 	util.PanicIfNotNil(err)
-	storePg, err := NewStorePg(db)
+	storePg := NewStorePg(db)
+
+	_, err = db.Exec("DROP SCHEMA auth CASCADE;")
 	util.PanicIfNotNil(err)
+	util.PanicIfNotNil(storePg.createSchema())
 
 	mailer := new(mailermock.MailerMock)
 
-	return NewAuth(authConfig, storePg, mailer), mailer, db
-}
-
-func dropSchema(db *sql.DB) {
-	_, err := db.Exec("DROP SCHEMA auth CASCADE;")
-	util.PanicIfNotNil(err)
+	return NewAuth(authConfig, storePg, mailer), storePg, mailer
 }

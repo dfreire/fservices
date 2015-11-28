@@ -13,7 +13,7 @@ import (
 type Auth interface {
 	Signup(appId, email, password, lang string) (confirmationToken string, err error)
 	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
-	// ConfirmSignup(confirmationToken string) error
+	ConfirmSignup(confirmationToken string) error
 	// Signin(appId, email, password string) (sessionToken string, err error)
 	// Signout(userId string) error
 	// ForgotPasword(appId, email string) error
@@ -56,7 +56,7 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 }
 
 func (self authImpl) Signup(appId, email, password, lang string) (confirmationToken string, err error) {
-	confirmationKey, err := self.createUser(appId, email, password, lang, true)
+	confirmationKey, err := self.createUser(appId, email, password, lang, false)
 	if err != nil {
 		return
 	}
@@ -65,7 +65,7 @@ func (self authImpl) Signup(appId, email, password, lang string) (confirmationTo
 }
 
 func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error) {
-	confirmationKey, err := self.store.getUserConfirmationKey(appId, email)
+	confirmationKey, _, err := self.store.getUserConfirmation(appId, email)
 	if err != nil {
 		return
 	}
@@ -73,17 +73,27 @@ func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirma
 	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
 }
 
-func (self authImpl) createUser(appId, email, password, lang string, requireConfirmation bool) (confirmationKey string, err error) {
+func (self authImpl) ConfirmSignup(confirmationToken string) error {
+	// appId, email, lang, confirmationKey, err := self.parseConfirmationToken(confirmationToken)
+	return nil
+}
+
+func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
 
-	if requireConfirmation {
+	now := time.Now()
+	var confirmedAt time.Time
+
+	if isConfirmed {
+		confirmedAt = now
+	} else {
 		confirmationKey = uuid.NewV4().String()
 	}
 
-	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, time.Now())
+	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, now, confirmedAt)
 	return confirmationKey, err
 }
 
@@ -123,4 +133,22 @@ func (self authImpl) createConfirmationToken(appId, email, lang, confirmationKey
 	token.Claims["lang"] = lang
 	token.Claims["confirmationKey"] = confirmationKey
 	return token.SignedString([]byte(self.cfg.JwtKey))
+}
+
+func (self authImpl) parseConfirmationToken(confirmationToken string) (appId, email, lang, confirmationKey string, err error) {
+	token, err := jwt.Parse(confirmationToken, func(token *jwt.Token) (interface{}, error) {
+		return []byte(self.cfg.JwtKey), nil
+	})
+	if err != nil {
+		return
+	}
+	if !token.Valid {
+		return
+	}
+
+	appId = token.Claims["appId"].(string)
+	email = token.Claims["email"].(string)
+	lang = token.Claims["lang"].(string)
+	confirmationKey = token.Claims["confirmationKey"].(string)
+	return
 }

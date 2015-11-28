@@ -8,18 +8,18 @@ import (
 )
 
 type store interface {
-	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt time.Time) error
+	createSchema() error
+	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 
-	getUserConfirmationKey(appId, email string) (string, error)
+	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 }
 
 type storePg struct {
 	db *sql.DB
 }
 
-func NewStorePg(db *sql.DB) (storePg, error) {
-	impl := storePg{db}
-	return impl, impl.createSchema()
+func NewStorePg(db *sql.DB) storePg {
+	return storePg{db}
 }
 
 func (self storePg) createSchema() error {
@@ -29,19 +29,18 @@ func (self storePg) createSchema() error {
 		CREATE TYPE auth.lang AS ENUM ('pt_PT', 'en_US');
 
 		CREATE TABLE auth.user (
-		   id                       CHAR(36) PRIMARY KEY NOT NULL,
-		   appId                    TEXT NOT NULL,
-		   email                    TEXT NOT NULL,
-		   hashedPass               TEXT NOT NULL,
-		   createdAt                TIMESTAMPTZ NOT NULL,
-		   lang                     auth.lang NOT NULL,
+		   id                CHAR(36) PRIMARY KEY NOT NULL,
+		   appId             TEXT NOT NULL,
+		   email             TEXT NOT NULL,
+		   hashedPass        TEXT NOT NULL,
+		   createdAt         TIMESTAMPTZ NOT NULL,
+		   lang              auth.lang NOT NULL,
 		   -- confirm
-		   confirmationKey          CHAR(36),
-		   sentConfirmationTokenAt  TIMESTAMPTZ,
-		   confirmedAt              TIMESTAMPTZ,
+		   confirmationKey   CHAR(36),
+		   confirmedAt       TIMESTAMPTZ,
 		   -- reset
-		   resetToken               CHAR(36),
-		   sentResetTokenAt         TIMESTAMPTZ
+		   resetToken        CHAR(36),
+		   sentResetTokenAt  TIMESTAMPTZ
 		);
 
 		CREATE UNIQUE INDEX auth_user_appId_email ON auth.user (appId, email);
@@ -51,12 +50,12 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt time.Time) error {
+func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error {
 	insert := `
 		INSERT INTO auth.user
-		(id, appId, email, hashedPass, lang, confirmationKey, createdAt)
+		(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmedAt)
 		VALUES
-		($1, $2, $3, $4, $5, $6, $7);
+		($1, $2, $3, $4, $5, $6, $7, $8);
 	`
 
 	stmt, err := self.db.Prepare(insert)
@@ -64,20 +63,16 @@ func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationK
 		return err
 	}
 
-	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt)
+	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmedAt)
 	return err
 }
 
-func (self storePg) getUserConfirmationKey(appId, email string) (string, error) {
+func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error) {
 	query := `
-		SELECT confirmationKey
+		SELECT confirmationKey, confirmedAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	var confirmationKey string
-	if err := self.db.QueryRow(query, appId, email).Scan(&confirmationKey); err != nil {
-		return "", err
-	}
-
-	return confirmationKey, nil
+	self.db.QueryRow(query, appId, email).Scan(&confirmationKey, &confirmedAt)
+	return
 }
