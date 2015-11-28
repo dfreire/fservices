@@ -16,8 +16,22 @@ func TestSignup(t *testing.T) {
 	defer dropSchema(db)
 
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
 	assert.Nil(t, auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US"))
+
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
+}
+
+func TestResendConfirmationMail(t *testing.T) {
+	auth, mailerMock, db := createAuthService()
+	defer dropSchema(db)
+
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	assert.Nil(t, auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.ResendConfirmationMail("myapp", "dario.freire@gmail.com", "en_US"))
+
+	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 
 func createAuthService() (Auth, *mailermock.MailerMock, *sql.DB) {

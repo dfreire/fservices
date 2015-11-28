@@ -12,7 +12,7 @@ import (
 
 type Auth interface {
 	Signup(appId, email, password, lang string) error
-	// ResendConfirmationMail(appId, email string) error
+	ResendConfirmationMail(appId, email, lang string) error
 	// ConfirmSignup(confirmationToken string) error
 	// Signin(appId, email, password string) (sessionToken string, err error)
 	// Signout(userId string) error
@@ -56,6 +56,15 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 
 func (self authImpl) Signup(appId, email, password, lang string) error {
 	confirmationKey, err := self.createUser(appId, email, password, lang, true)
+	if err != nil {
+		return err
+	}
+
+	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
+}
+
+func (self authImpl) ResendConfirmationMail(appId, email, lang string) error {
+	confirmationKey, err := self.store.getUserConfirmationKey(appId, email)
 	if err != nil {
 		return err
 	}
