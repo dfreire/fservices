@@ -14,7 +14,7 @@ type store interface {
 	createSession(id, userId string, createdAt time.Time) error
 
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
-	getUserPassword(appId, email string) (userId, hashedPass string, err error)
+	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
 	getSession(sessionId string) (userId string, createdAt time.Time, err error)
 }
 
@@ -125,13 +125,13 @@ func (self storePg) getUserConfirmation(appId, email string) (confirmationKey st
 	return
 }
 
-func (self storePg) getUserPassword(appId, email string) (userId, hashedPass string, err error) {
+func (self storePg) getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error) {
 	query := `
-		SELECT id, hashedPass
+		SELECT id, hashedPass, confirmedAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass)
+	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass, &confirmedAt)
 	return
 }
 

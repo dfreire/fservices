@@ -95,7 +95,15 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 }
 
 func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
-	userId, hashedPass, err := self.store.getUserPassword(appId, email)
+	userId, hashedPass, confirmedAt, err := self.store.getUserPassword(appId, email)
+	if err != nil {
+		return
+	}
+
+	if confirmedAt.Equal(time.Time{}) {
+		err = errors.New("The account is not yet confirmed.")
+		return
+	}
 
 	if err = bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte(password)); err != nil {
 		return

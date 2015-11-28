@@ -27,7 +27,7 @@ func TestSignup(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.NotEmpty(t, confirmationKey)
-	assert.True(t, time.Time{}.Equal(confirmedAt))
+	assert.True(t, confirmedAt.Equal(time.Time{}))
 }
 
 func TestResendConfirmationMail(t *testing.T) {
