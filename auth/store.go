@@ -15,6 +15,7 @@ type store interface {
 
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, err error)
+	getSession(sessionId string) (userId string, createdAt time.Time, err error)
 }
 
 type storePg struct {
@@ -100,7 +101,7 @@ func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Tim
 func (self storePg) createSession(id, userId string, createdAt time.Time) error {
 	insert := `
 		INSERT INTO auth.session
-		(id, userId, createdAt),
+		(id, userId, createdAt)
 		VALUES
 		($1, $2, $3);
 	`
@@ -126,10 +127,20 @@ func (self storePg) getUserConfirmation(appId, email string) (confirmationKey st
 
 func (self storePg) getUserPassword(appId, email string) (userId, hashedPass string, err error) {
 	query := `
-		SELECT userId, hashedPass
+		SELECT id, hashedPass
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
 	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass)
+	return
+}
+
+func (self storePg) getSession(sessionId string) (userId string, createdAt time.Time, err error) {
+	query := `
+		SELECT userId, createdAt
+		FROM auth.session
+		WHERE id = $1;
+	`
+	err = self.db.QueryRow(query, sessionId).Scan(&userId, &createdAt)
 	return
 }

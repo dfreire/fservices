@@ -15,7 +15,7 @@ type Auth interface {
 	Signup(appId, email, password, lang string) (confirmationToken string, err error)
 	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
 	ConfirmSignup(confirmationToken string) error
-	// Signin(appId, email, password string) (sessionToken string, err error)
+	Signin(appId, email, password string) (sessionToken string, err error)
 	// Signout(userId string) error
 	// ForgotPasword(appId, email string) error
 	// ResetPassword(resetToken, newPassword string) error
@@ -102,7 +102,7 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	}
 
 	sessionId := uuid.NewV4().String()
-	sessionCreatedAt := time.Now()
+	sessionCreatedAt := time.Unix(time.Now().Unix(), 0)
 
 	if err = self.store.createSession(sessionId, userId, sessionCreatedAt); err != nil {
 		return
@@ -184,7 +184,7 @@ func (self authImpl) createSessionToken(id, userId string, createdAt time.Time) 
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims["id"] = id
 	token.Claims["userId"] = userId
-	token.Claims["createdAt"] = createdAt
+	token.Claims["createdAt"] = createdAt.Unix()
 	return token.SignedString([]byte(self.cfg.JwtKey))
 }
 
@@ -201,6 +201,6 @@ func (self authImpl) parseSessionToken(sessionToken string) (id, userId string, 
 
 	id = token.Claims["id"].(string)
 	userId = token.Claims["userId"].(string)
-	createdAt = token.Claims["createdAt"].(time.Time)
+	createdAt = time.Unix(int64(token.Claims["createdAt"].(float64)), 0)
 	return
 }
