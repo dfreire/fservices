@@ -74,7 +74,10 @@ func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	util.PanicIfNotNil(err)
 	storePg := NewStorePg(db)
 
-	_, err = db.Exec("DROP SCHEMA auth CASCADE;")
+	_, err = db.Exec(`
+		CREATE SCHEMA IF NOT EXISTS auth;
+		DROP SCHEMA auth CASCADE;
+	`)
 	util.PanicIfNotNil(err)
 	util.PanicIfNotNil(storePg.createSchema())
 

@@ -27,6 +27,8 @@ type Auth interface {
 	// ChangeUserPassword(userId, newPassword string) error
 	// ChangeUserEmail(userId, newEmail string) error
 	// RemoveUserById(userId string) error
+
+	// RemoveExpiredSessions(appId strings) error
 }
 
 type UserView struct {
@@ -92,6 +94,24 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 	return self.store.setUserConfirmedAt(appId, email, time.Now())
 }
 
+func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
+	userId, hashedPass, err := self.store.getUserPassword(appId, email)
+
+	if err = bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte(password)); err != nil {
+		return
+	}
+
+	sessionId := uuid.NewV4().String()
+	sessionCreatedAt := time.Now()
+
+	if err = self.store.createSession(sessionId, userId, sessionCreatedAt); err != nil {
+		return
+	}
+
+	sessionToken, err = self.createSessionToken(sessionId, userId, sessionCreatedAt)
+	return
+}
+
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -133,13 +153,6 @@ func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey s
 	return confirmationToken, self.mailer.Send(mail)
 }
 
-type confirmationToken struct {
-	AppId           string
-	Email           string
-	Lang            string
-	ConfirmationKey string
-}
-
 func (self authImpl) createConfirmationToken(appId, email, lang, confirmationKey string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 	token.Claims["appId"] = appId
@@ -164,5 +177,30 @@ func (self authImpl) parseConfirmationToken(confirmationToken string) (appId, em
 	email = token.Claims["email"].(string)
 	lang = token.Claims["lang"].(string)
 	confirmationKey = token.Claims["confirmationKey"].(string)
+	return
+}
+
+func (self authImpl) createSessionToken(id, userId string, createdAt time.Time) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims["id"] = id
+	token.Claims["userId"] = userId
+	token.Claims["createdAt"] = createdAt
+	return token.SignedString([]byte(self.cfg.JwtKey))
+}
+
+func (self authImpl) parseSessionToken(sessionToken string) (id, userId string, createdAt time.Time, err error) {
+	token, err := jwt.Parse(sessionToken, func(token *jwt.Token) (interface{}, error) {
+		return []byte(self.cfg.JwtKey), nil
+	})
+	if err != nil {
+		return
+	}
+	if !token.Valid {
+		return
+	}
+
+	id = token.Claims["id"].(string)
+	userId = token.Claims["userId"].(string)
+	createdAt = token.Claims["createdAt"].(time.Time)
 	return
 }
