@@ -17,8 +17,10 @@ func TestSignup(t *testing.T) {
 
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
-	assert.Nil(t, auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US"))
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
 
+	assert.NotEmpty(t, confirmationToken)
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
 
@@ -28,9 +30,13 @@ func TestResendConfirmationMail(t *testing.T) {
 
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
-	assert.Nil(t, auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US"))
-	assert.Nil(t, auth.ResendConfirmationMail("myapp", "dario.freire@gmail.com", "en_US"))
+	confirmationToken1, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
 
+	confirmationToken2, err := auth.ResendConfirmationMail("myapp", "dario.freire@gmail.com", "en_US")
+	assert.Nil(t, err)
+
+	assert.Equal(t, confirmationToken1, confirmationToken2)
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 

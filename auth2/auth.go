@@ -1,18 +1,18 @@
 package auth2
 
 import (
-	"strings"
 	"time"
 
 	"github.com/dfreire/fservices/mailer"
 	"github.com/dfreire/fservices/util"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type Auth interface {
-	Signup(appId, email, password, lang string) error
-	ResendConfirmationMail(appId, email, lang string) error
+	Signup(appId, email, password, lang string) (confirmationToken string, err error)
+	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
 	// ConfirmSignup(confirmationToken string) error
 	// Signin(appId, email, password string) (sessionToken string, err error)
 	// Signout(userId string) error
@@ -35,6 +35,7 @@ type UserView struct {
 }
 
 type AuthConfig struct {
+	JwtKey            string
 	FromEmail         string
 	ConfirmationEmail ConfirmationEmailConfig
 }
@@ -54,19 +55,19 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 	return authImpl{cfg, store, mailer}
 }
 
-func (self authImpl) Signup(appId, email, password, lang string) error {
+func (self authImpl) Signup(appId, email, password, lang string) (confirmationToken string, err error) {
 	confirmationKey, err := self.createUser(appId, email, password, lang, true)
 	if err != nil {
-		return err
+		return
 	}
 
 	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
 }
 
-func (self authImpl) ResendConfirmationMail(appId, email, lang string) error {
+func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error) {
 	confirmationKey, err := self.store.getUserConfirmationKey(appId, email)
 	if err != nil {
-		return err
+		return
 	}
 
 	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
@@ -86,16 +87,16 @@ func (self authImpl) createUser(appId, email, password, lang string, requireConf
 	return confirmationKey, err
 }
 
-func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey string) error {
-	confirmationToken, err := createConfirmationToken(appId, email, lang, confirmationKey)
+func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey string) (confirmationToken string, err error) {
+	confirmationToken, err = self.createConfirmationToken(appId, email, lang, confirmationKey)
 	if err != nil {
-		return err
+		return
 	}
 
 	templateValues := struct{ ConfirmationToken string }{confirmationToken}
 	body, err := util.RenderTemplate(self.cfg.ConfirmationEmail[lang].Body, templateValues)
 	if err != nil {
-		return err
+		return
 	}
 
 	mail := mailer.Mail{
@@ -105,10 +106,21 @@ func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey s
 		Body:    body,
 	}
 
-	return self.mailer.Send(mail)
+	return confirmationToken, self.mailer.Send(mail)
 }
 
-func createConfirmationToken(appId, email, lang, confirmationKey string) (string, error) {
-	confirmationToken := strings.Join([]string{appId, email, lang, confirmationKey}, "::")
-	return confirmationToken, nil
+type confirmationToken struct {
+	AppId           string
+	Email           string
+	Lang            string
+	ConfirmationKey string
+}
+
+func (self authImpl) createConfirmationToken(appId, email, lang, confirmationKey string) (string, error) {
+	token := jwt.New(jwt.SigningMethodHS256)
+	token.Claims["appId"] = appId
+	token.Claims["email"] = email
+	token.Claims["lang"] = lang
+	token.Claims["confirmationKey"] = confirmationKey
+	return token.SignedString([]byte(self.cfg.JwtKey))
 }

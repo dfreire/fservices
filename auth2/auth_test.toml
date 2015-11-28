@@ -1,3 +1,5 @@
+JwtKey = "981c5604-b982-482e-b6e9-6adbe8ea04ae"
+
 FromEmail = "dario.freire+fservices@gmail.com"
 
 [ConfirmationEmail.en_US]
@@ -5,7 +7,7 @@ Subject = "Signup Confirmation"
 Body = """
 <p>Thank you for signing up!</p>
 <p>Please confirm your account by opening the link:<br />
-<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>http://example.com/confirm?l=en&ct={{.ConfirmationToken}}</a>
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRM SIGN UP</a>
 </p>
 """
 
@@ -14,6 +16,6 @@ Subject = "Confirmação de Registo"
 Body = """
 <p>Obrigado pelo seu registo!</p>
 <p>Por favor confirme a sua conta abrindo o link:<br />
-<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>http://example.com/confirm?l=en&ct={{.ConfirmationToken}}</a>
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRMAR REGISTO</a>
 </p>
 """
