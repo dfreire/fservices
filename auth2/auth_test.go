@@ -12,21 +12,15 @@ import (
 )
 
 func TestSignup(t *testing.T) {
-	auth, cfg, mailerMock, db := createAuthService()
+	auth, mailerMock, db := createAuthService()
 	defer dropSchema(db)
 
-	mailerMock.On("QuickSend",
-		cfg.FromEmail,
-		"dario.freire@gmail.com",
-		cfg.ConfirmationEmail["en_US"].Subject,
-		mock.AnythingOfTypeArgument("string"),
-	).Return(nil)
-
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 	assert.Nil(t, auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US"))
-	mailerMock.AssertNumberOfCalls(t, "QuickSend", 1)
+	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
 
-func createAuthService() (Auth, AuthConfig, *mailermock.MailerMock, *sql.DB) {
+func createAuthService() (Auth, *mailermock.MailerMock, *sql.DB) {
 	var authConfig AuthConfig
 	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
 	util.PanicIfNotNil(err)
@@ -38,7 +32,7 @@ func createAuthService() (Auth, AuthConfig, *mailermock.MailerMock, *sql.DB) {
 
 	mailer := new(mailermock.MailerMock)
 
-	return NewAuth(authConfig, storePg, mailer), authConfig, mailer, db
+	return NewAuth(authConfig, storePg, mailer), mailer, db
 }
 
 func dropSchema(db *sql.DB) {

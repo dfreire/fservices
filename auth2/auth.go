@@ -55,23 +55,33 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 }
 
 func (self authImpl) Signup(appId, email, password, lang string) error {
-	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	confirmationKey, err := self.createUser(appId, email, password, lang, true)
 	if err != nil {
 		return err
 	}
 
-	confirmationKey := uuid.NewV4().String()
+	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
+}
 
-	if err := self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, time.Now()); err != nil {
-		return err
+func (self authImpl) createUser(appId, email, password, lang string, requireConfirmation bool) (confirmationKey string, err error) {
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return "", err
 	}
 
+	if requireConfirmation {
+		confirmationKey = uuid.NewV4().String()
+	}
+
+	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, time.Now())
+	return confirmationKey, err
+}
+
+func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey string) error {
 	confirmationToken, err := createConfirmationToken(appId, email, lang, confirmationKey)
 	if err != nil {
 		return err
 	}
-
-	subject := self.cfg.ConfirmationEmail[lang].Subject
 
 	templateValues := struct{ ConfirmationToken string }{confirmationToken}
 	body, err := util.RenderTemplate(self.cfg.ConfirmationEmail[lang].Body, templateValues)
@@ -79,11 +89,14 @@ func (self authImpl) Signup(appId, email, password, lang string) error {
 		return err
 	}
 
-	if err := self.mailer.QuickSend(self.cfg.FromEmail, email, subject, body); err != nil {
-		return err
+	mail := mailer.Mail{
+		From:    self.cfg.FromEmail,
+		To:      []string{email},
+		Subject: self.cfg.ConfirmationEmail[lang].Subject,
+		Body:    body,
 	}
 
-	return nil
+	return self.mailer.Send(mail)
 }
 
 func createConfirmationToken(appId, email, lang, confirmationKey string) (string, error) {

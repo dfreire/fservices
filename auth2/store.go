@@ -9,6 +9,8 @@ import (
 
 type store interface {
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt time.Time) error
+
+	getUserConfirmationKey(appId, email string) (string, error)
 }
 
 type storePg struct {
@@ -35,7 +37,7 @@ func (self storePg) createSchema() error {
 		   lang                     auth.lang NOT NULL,
 		   -- confirm
 		   confirmationKey          CHAR(36),
-		   requestedConfirmationAt  TIMESTAMPTZ,
+		   sentConfirmationTokenAt  TIMESTAMPTZ,
 		   confirmedAt              TIMESTAMPTZ,
 		   -- reset
 		   resetToken               CHAR(36),
@@ -64,4 +66,18 @@ func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationK
 
 	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt)
 	return err
+}
+
+func (self storePg) getUserConfirmationKey(appId, email string) (string, error) {
+	query := `
+		SELECT confirmationKey
+		FROM auth.user
+		WHERE appId = $1 AND email = $2;
+	`
+	var confirmationKey string
+	if err := self.db.QueryRow(query, appId, email).Scan(&confirmationKey); err != nil {
+		return "", err
+	}
+
+	return confirmationKey, nil
 }
