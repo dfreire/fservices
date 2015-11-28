@@ -44,6 +44,27 @@ func TestResendConfirmationMail(t *testing.T) {
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 
+func TestConfirmSignup(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	t0 := time.Now()
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	t1 := time.Now()
+
+	_, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+
+	assert.True(t, confirmedAt.After(t0))
+	assert.True(t, confirmedAt.Before(t1))
+}
+
 func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	var authConfig AuthConfig
 	_, err := toml.DecodeFile("auth_test.toml", &authConfig)

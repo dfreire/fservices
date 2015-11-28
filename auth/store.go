@@ -10,6 +10,7 @@ import (
 type store interface {
 	createSchema() error
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
+	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
 
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 }
@@ -64,6 +65,22 @@ func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationK
 	}
 
 	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmedAt)
+	return err
+}
+
+func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Time) error {
+	insert := `
+		UPDATE auth.user
+		SET confirmedAt = $1
+		WHERE appId = $2 AND email = $3;
+	`
+
+	stmt, err := self.db.Prepare(insert)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(confirmedAt, appId, email)
 	return err
 }
 

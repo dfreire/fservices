@@ -1,6 +1,7 @@
 package auth2
 
 import (
+	"errors"
 	"time"
 
 	"github.com/dfreire/fservices/mailer"
@@ -74,8 +75,21 @@ func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirma
 }
 
 func (self authImpl) ConfirmSignup(confirmationToken string) error {
-	// appId, email, lang, confirmationKey, err := self.parseConfirmationToken(confirmationToken)
-	return nil
+	appId, email, _, tokenConfirmationKey, err := self.parseConfirmationToken(confirmationToken)
+	if err != nil {
+		return err
+	}
+
+	confirmationKey, _, err := self.store.getUserConfirmation(appId, email)
+	if err != nil {
+		return err
+	}
+
+	if tokenConfirmationKey != confirmationKey {
+		return errors.New("The token confirmation key does not match the expected confirmation key.")
+	}
+
+	return self.store.setUserConfirmedAt(appId, email, time.Now())
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
