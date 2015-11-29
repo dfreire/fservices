@@ -28,7 +28,7 @@ type Auth interface {
 	// ChangeUserEmail(userId, newEmail string) error
 	// RemoveUserById(userId string) error
 
-	// RemoveExpiredSessions(appId strings) error
+	// RemoveExpiredSessions(appId strings, duration time.Duration) error
 }
 
 type UserView struct {
@@ -118,6 +118,10 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 
 	sessionToken, err = self.createSessionToken(sessionId, userId, sessionCreatedAt)
 	return
+}
+
+func (self authImpl) Signout(userId string) error {
+	return nil
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
