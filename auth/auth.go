@@ -16,7 +16,7 @@ type Auth interface {
 	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
 	ConfirmSignup(confirmationToken string) error
 	Signin(appId, email, password string) (sessionToken string, err error)
-	// Signout(userId string) error
+	Signout(sessionToken string) error
 	// ForgotPasword(appId, email string) error
 	// ResetPassword(resetToken, newPassword string) error
 	// ChangePassword(userId, oldPassword, newPassword string) error
@@ -120,8 +120,13 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	return
 }
 
-func (self authImpl) Signout(userId string) error {
-	return nil
+func (self authImpl) Signout(sessionToken string) error {
+	sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	if err != nil {
+		return err
+	}
+
+	return self.store.removeSession(sessionId)
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {

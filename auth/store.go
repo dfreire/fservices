@@ -12,6 +12,7 @@ type store interface {
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
 	createSession(id, userId string, createdAt time.Time) error
+	removeSession(id string) error
 
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
@@ -143,4 +144,19 @@ func (self storePg) getSession(sessionId string) (userId string, createdAt time.
 	`
 	err = self.db.QueryRow(query, sessionId).Scan(&userId, &createdAt)
 	return
+}
+
+func (self storePg) removeSession(id string) error {
+	delete := `
+		DELETE FROM auth.session
+		WHERE id = $1;
+	`
+
+	stmt, err := self.db.Prepare(delete)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(id)
+	return err
 }

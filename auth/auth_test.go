@@ -86,6 +86,30 @@ func TestSignin(t *testing.T) {
 	assert.True(t, createdAt1.Equal(createdAt2))
 }
 
+func TestSignout(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	sessionId, _, _, err := auth.(authImpl).parseSessionToken(sessionToken)
+	assert.Nil(t, err)
+
+	_, _, err = store.getSession(sessionId)
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.Signout(sessionToken))
+
+	_, _, err = store.getSession(sessionId)
+	assert.NotNil(t, err)
+}
+
 func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	var authConfig AuthConfig
 	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
