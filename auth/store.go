@@ -9,13 +9,14 @@ import (
 
 type store interface {
 	createSchema() error
+
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
-	createSession(id, userId string, createdAt time.Time) error
-	removeSession(id string) error
-
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
+
+	createSession(id, userId string, createdAt time.Time) error
+	removeSession(id string) error
 	getSession(sessionId string) (userId string, createdAt time.Time, err error)
 }
 
@@ -99,23 +100,6 @@ func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Tim
 	return err
 }
 
-func (self storePg) createSession(id, userId string, createdAt time.Time) error {
-	insert := `
-		INSERT INTO auth.session
-		(id, userId, createdAt)
-		VALUES
-		($1, $2, $3);
-	`
-
-	stmt, err := self.db.Prepare(insert)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(id, userId, createdAt)
-	return err
-}
-
 func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error) {
 	query := `
 		SELECT confirmationKey, confirmedAt
@@ -136,14 +120,21 @@ func (self storePg) getUserPassword(appId, email string) (userId, hashedPass str
 	return
 }
 
-func (self storePg) getSession(sessionId string) (userId string, createdAt time.Time, err error) {
-	query := `
-		SELECT userId, createdAt
-		FROM auth.session
-		WHERE id = $1;
+func (self storePg) createSession(id, userId string, createdAt time.Time) error {
+	insert := `
+		INSERT INTO auth.session
+		(id, userId, createdAt)
+		VALUES
+		($1, $2, $3);
 	`
-	err = self.db.QueryRow(query, sessionId).Scan(&userId, &createdAt)
-	return
+
+	stmt, err := self.db.Prepare(insert)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(id, userId, createdAt)
+	return err
 }
 
 func (self storePg) removeSession(id string) error {
@@ -159,4 +150,14 @@ func (self storePg) removeSession(id string) error {
 
 	_, err = stmt.Exec(id)
 	return err
+}
+
+func (self storePg) getSession(sessionId string) (userId string, createdAt time.Time, err error) {
+	query := `
+		SELECT userId, createdAt
+		FROM auth.session
+		WHERE id = $1;
+	`
+	err = self.db.QueryRow(query, sessionId).Scan(&userId, &createdAt)
+	return
 }
