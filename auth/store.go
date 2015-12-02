@@ -12,6 +12,7 @@ type store interface {
 
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
+	setResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
 
@@ -35,18 +36,18 @@ func (self storePg) createSchema() error {
 		CREATE TYPE auth.lang AS ENUM ('pt_PT', 'en_US');
 
 		CREATE TABLE auth.user (
-		   id                CHAR(36) NOT NULL,
-		   appId             TEXT NOT NULL,
-		   email             TEXT NOT NULL,
-		   hashedPass        TEXT NOT NULL,
-		   createdAt         TIMESTAMPTZ NOT NULL,
-		   lang              auth.lang NOT NULL,
+		   id               CHAR(36) NOT NULL,
+		   appId            TEXT NOT NULL,
+		   email            TEXT NOT NULL,
+		   hashedPass       TEXT NOT NULL,
+		   createdAt        TIMESTAMPTZ NOT NULL,
+		   lang             auth.lang NOT NULL,
 		   -- confirm
-		   confirmationKey   CHAR(36),
-		   confirmedAt       TIMESTAMPTZ,
+		   confirmationKey  CHAR(36),
+		   confirmedAt      TIMESTAMPTZ,
 		   -- reset
-		   resetToken        CHAR(36),
-		   sentResetTokenAt  TIMESTAMPTZ,
+		   resetKey         CHAR(36),
+		   setResetKeyAt    TIMESTAMPTZ,
 
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
@@ -97,6 +98,22 @@ func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Tim
 	}
 
 	_, err = stmt.Exec(confirmedAt, appId, email)
+	return err
+}
+
+func (self storePg) setResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error {
+	update := `
+		UPDATE auth.user
+		SET resetKey = $1, setResetKeyAt = $2
+		WHERE appId = $3 AND email = $4;
+	`
+
+	stmt, err := self.db.Prepare(update)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(resetKey, setResetKeyAt, appId, email)
 	return err
 }
 
