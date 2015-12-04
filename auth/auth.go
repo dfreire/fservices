@@ -184,16 +184,16 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 		return "", err
 	}
 
-	now := time.Now()
-	var confirmedAt time.Time
+	createdAt := time.Now()
+	confirmedAt := time.Time{}
 
 	if isConfirmed {
-		confirmedAt = now
+		confirmedAt = createdAt
 	} else {
 		confirmationKey = uuid.NewV4().String()
 	}
 
-	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, now, confirmedAt)
+	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, createdAt, confirmedAt)
 	return confirmationKey, err
 }
 
