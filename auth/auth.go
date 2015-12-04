@@ -143,7 +143,7 @@ func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string
 
 	resetKey := uuid.NewV4().String()
 
-	err = self.store.setResetKey(appId, email, resetKey, time.Now())
+	err = self.store.setUserResetKey(appId, email, resetKey, time.Now())
 	if err != nil {
 		return
 	}

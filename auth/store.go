@@ -12,7 +12,7 @@ type store interface {
 
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
-	setResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error
+	setUserResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
@@ -103,7 +103,7 @@ func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Tim
 	return err
 }
 
-func (self storePg) setResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error {
+func (self storePg) setUserResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
 		SET resetKey = $1, setResetKeyAt = $2
