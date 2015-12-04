@@ -21,12 +21,11 @@ type Auth interface {
 	ResetPassword(resetToken, newPassword string) error
 	// ChangePassword(sessionToken, oldPassword, newPassword string) error
 	// ChangeEmail(sessionToken, password, newEmail string) error
-	// GetAllUsers() (adminKey, []UserView, error)
-	// GetUsersByAppId(adminKey, appId string) ([]UserView, error)
-	// CreateUser(adminKey, appId, email, password string) error
-	// ChangeUserPassword(adminKey, userId, newPassword string) error
-	// ChangeUserEmail(adminKey, userId, newEmail string) error
-	// RemoveUserById(adminKey, userId string) error
+	// GetUsers() (adminToken, []UserView, error)
+	// CreateUser(adminToken, appId, email, password string) error
+	// ChangeUserPassword(adminToken, userId, newPassword string) error
+	// ChangeUserEmail(adminToken, userId, newEmail string) error
+	// RemoveUserById(adminToken, userId string) error
 
 	// RemoveExpiredConfirmationKeys(appId string, maxAge time.Duration) error
 	// RemoveExpiredResetKeys(appId string, maxAge time.Duration) error
