@@ -13,6 +13,7 @@ type store interface {
 	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
 	setResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error
+	setUserHashedPass(appId, email, hashedPass string) error
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
 	getUserResetKey(appId, email string) (resetKey string, setResetKeyAt time.Time, err error)
@@ -115,6 +116,22 @@ func (self storePg) setResetKey(appId, email, resetKey string, setResetKeyAt tim
 	}
 
 	_, err = stmt.Exec(resetKey, setResetKeyAt, appId, email)
+	return err
+}
+
+func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
+	update := `
+		UPDATE auth.user
+		SET hashedPass = $1, resetKey = NULL, setResetKeyAt = NULL
+		WHERE appId = $2 AND email = $3;
+	`
+
+	stmt, err := self.db.Prepare(update)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(hashedPass, appId, email)
 	return err
 }
 

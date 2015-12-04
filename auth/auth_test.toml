@@ -1,5 +1,7 @@
 JwtKey = "981c5604-b982-482e-b6e9-6adbe8ea04ae"
 
+MaxResetKeyAgeInMinutes = 15
+
 FromEmail = "dario.freire+fservices@gmail.com"
 
 [ConfirmationEmail.en_US]

@@ -143,6 +143,7 @@ func TestForgotPassword(t *testing.T) {
 	assert.Equal(t, "dario.freire@gmail.com", email)
 	assert.Equal(t, "en_US", lang)
 	assert.Equal(t, resetKey1, resetKey2)
+	assert.NotEmpty(t, resetKey1)
 	assert.True(t, setResetKeyAt.After(t0))
 	assert.True(t, setResetKeyAt.Before(t1))
 

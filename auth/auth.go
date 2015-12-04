@@ -18,7 +18,7 @@ type Auth interface {
 	Signin(appId, email, password string) (sessionToken string, err error)
 	Signout(sessionToken string) error
 	ForgotPasword(appId, email, lang string) (resetToken string, err error)
-	// ResetPassword(resetToken, newPassword string) error
+	ResetPassword(resetToken, newPassword string) error
 	// ChangePassword(userId, oldPassword, newPassword string) error
 	// ChangeEmail(userId, password, newEmail string) error
 	// GetAllUsers() ([]UserView, error)
@@ -38,10 +38,11 @@ type UserView struct {
 }
 
 type AuthConfig struct {
-	JwtKey             string
-	FromEmail          string
-	ConfirmationEmail  AuthMailConfig
-	ResetPasswordEmail AuthMailConfig
+	JwtKey                  string
+	MaxResetKeyAgeInMinutes int
+	FromEmail               string
+	ConfirmationEmail       AuthMailConfig
+	ResetPasswordEmail      AuthMailConfig
 }
 type AuthMailConfig map[string]struct {
 	Subject string
@@ -88,7 +89,7 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 	}
 
 	if tokenConfirmationKey != confirmationKey {
-		return errors.New("The token confirmation key does not match the expected confirmation key.")
+		return errors.New("The confirmation key is not valid.")
 	}
 
 	return self.store.setUserConfirmedAt(appId, email, time.Now())
@@ -101,7 +102,7 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	}
 
 	if confirmedAt.Equal(time.Time{}) {
-		err = errors.New("The account is not yet confirmed.")
+		err = errors.New("The account has not been confirmed.")
 		return
 	}
 
@@ -136,7 +137,7 @@ func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string
 	}
 
 	if confirmedAt.Equal(time.Time{}) {
-		err = errors.New("The account is not yet confirmed.")
+		err = errors.New("The account has not been confirmed.")
 		return
 	}
 
@@ -148,6 +149,33 @@ func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string
 	}
 
 	return self.sendResetPaswordEmail(appId, email, lang, resetKey)
+}
+
+func (self authImpl) ResetPassword(resetToken, newPassword string) error {
+	appId, email, _, tokenResetKey, err := self.parseResetToken(resetToken)
+	if err != nil {
+		return err
+	}
+
+	resetKey, setResetKeyAt, err := self.store.getUserResetKey(appId, email)
+	if err != nil {
+		return err
+	}
+
+	if tokenResetKey != resetKey {
+		return errors.New("The reset key is not valid.")
+	}
+
+	if time.Now().After(setResetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
+		return errors.New("The reset key has expired.")
+	}
+
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return self.store.setUserHashedPass(appId, email, string(hashedPass))
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
