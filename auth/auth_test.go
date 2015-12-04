@@ -20,6 +20,8 @@ func TestSignup(t *testing.T) {
 	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
 	assert.Nil(t, err)
 
+	// TODO parseConfirmationToken
+
 	assert.NotEmpty(t, confirmationToken)
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 
@@ -108,6 +110,37 @@ func TestSignout(t *testing.T) {
 
 	_, _, err = store.getSession(sessionId)
 	assert.NotNil(t, err)
+}
+
+func TestForgotPassword(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	t0 := time.Now()
+
+	resetToken, err := auth.ForgotPasword("myapp", "dario.freire@gmail.com", "en_US")
+	assert.Nil(t, err)
+
+	t1 := time.Now()
+
+	mailerMock.AssertNumberOfCalls(t, "Send", 2)
+
+	appId, email, lang, resetKey1, err := auth.(authImpl).parseResetToken(resetToken)
+	assert.Nil(t, err)
+	assert.Equal(t, "myapp", appId)
+	assert.Equal(t, "dario.freire@gmail.com", email)
+	assert.Equal(t, "en_US", lang)
+
+	resetKey2, setResetKeyAt, err := store.getUserResetKey(appId, email)
+	assert.Nil(t, err)
+	assert.Equal(t, resetKey1, resetKey2)
+	assert.True(t, setResetKeyAt.After(t0))
+	assert.True(t, setResetKeyAt.Before(t1))
 }
 
 func createAuthService() (Auth, store, *mailermock.MailerMock) {
