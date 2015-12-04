@@ -19,17 +19,22 @@ func TestSignup(t *testing.T) {
 
 	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
 	assert.Nil(t, err)
-
-	// TODO parseConfirmationToken
-
 	assert.NotEmpty(t, confirmationToken)
-	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 
-	confirmationKey, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	appId, email, lang, confirmationKey1, err := auth.(authImpl).parseConfirmationToken(confirmationToken)
 	assert.Nil(t, err)
 
-	assert.NotEmpty(t, confirmationKey)
+	confirmationKey2, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+
+	assert.Equal(t, "myapp", appId)
+	assert.Equal(t, "dario.freire@gmail.com", email)
+	assert.Equal(t, "en_US", lang)
+	assert.Equal(t, confirmationKey1, confirmationKey2)
+	assert.NotEmpty(t, confirmationKey1)
 	assert.True(t, confirmedAt.Equal(time.Time{}))
+
+	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
 
 func TestResendConfirmationMail(t *testing.T) {
@@ -128,19 +133,20 @@ func TestForgotPassword(t *testing.T) {
 
 	t1 := time.Now()
 
-	mailerMock.AssertNumberOfCalls(t, "Send", 2)
-
 	appId, email, lang, resetKey1, err := auth.(authImpl).parseResetToken(resetToken)
 	assert.Nil(t, err)
-	assert.Equal(t, "myapp", appId)
-	assert.Equal(t, "dario.freire@gmail.com", email)
-	assert.Equal(t, "en_US", lang)
 
 	resetKey2, setResetKeyAt, err := store.getUserResetKey(appId, email)
 	assert.Nil(t, err)
+
+	assert.Equal(t, "myapp", appId)
+	assert.Equal(t, "dario.freire@gmail.com", email)
+	assert.Equal(t, "en_US", lang)
 	assert.Equal(t, resetKey1, resetKey2)
 	assert.True(t, setResetKeyAt.After(t0))
 	assert.True(t, setResetKeyAt.Before(t1))
+
+	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 
 func createAuthService() (Auth, store, *mailermock.MailerMock) {
