@@ -8,8 +8,8 @@ FromEmail = "dario.freire+fservices@gmail.com"
 Subject = "Signup Confirmation"
 Body = """
 <p>Thank you for signing up!</p>
-<p>Please confirm your account by opening the link:<br />
-<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRM SIGN UP</a>
+<p>Please confirm your account by opening the link:&nbsp;
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRM ACCOUNT</a>
 </p>
 """
 
@@ -17,26 +17,26 @@ Body = """
 Subject = "Confirmação de Registo"
 Body = """
 <p>Obrigado pelo seu registo!</p>
-<p>Por favor confirme a sua conta abrindo o link:<br />
+<p>Por favor confirme a sua conta abrindo o link:&nbsp;
 <a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRMAR REGISTO</a>
 </p>
 """
 
-[ResetPaswordEmail.en_US]
+[ResetPasswordEmail.en_US]
 Subject = "Password Reset"
 Body = """
 <p>We have received a request to reset your password.</p>
-<p>You can set a new password by opening the link:<br />
+<p>You can set a new password by opening the link:&nbsp;
 <a href='http://example.com/reset-password?l=en&ct={{.ResetToken}}'>RESET PASSWORD</a>
 </p>
 <p>If you don't want to change your password you can ignore this mail.</p>
 """
 
-[ResetPaswordEmail.pt_PT]
+[ResetPasswordEmail.pt_PT]
 Subject = "Alterar Password"
 Body = """
 <p>Recebemos um pedido para alterar a sua password.</p>
-<p>Poderá escolher uma nova password abrindo o link:<br />
+<p>Poderá escolher uma nova password abrindo o link:&nbsp;
 <a href='http://example.com/reset-password?l=en&ct={{.ResetToken}}'>ALTERAR PASSWORD</a>
 </p>
 <p>Se não quiser alterar a sua password, pode ignorar este email.</p>
