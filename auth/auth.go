@@ -130,6 +130,16 @@ func (self authImpl) Signout(sessionToken string) error {
 }
 
 func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string, err error) {
+	_, confirmedAt, err := self.store.getUserConfirmation(appId, email)
+	if err != nil {
+		return
+	}
+
+	if confirmedAt.Equal(time.Time{}) {
+		err = errors.New("The account is not yet confirmed.")
+		return
+	}
+
 	resetKey := uuid.NewV4().String()
 
 	err = self.store.setResetKey(appId, email, resetKey, time.Now())
