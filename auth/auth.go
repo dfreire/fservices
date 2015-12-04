@@ -19,16 +19,18 @@ type Auth interface {
 	Signout(sessionToken string) error
 	ForgotPasword(appId, email, lang string) (resetToken string, err error)
 	ResetPassword(resetToken, newPassword string) error
-	// ChangePassword(userId, oldPassword, newPassword string) error
-	// ChangeEmail(userId, password, newEmail string) error
-	// GetAllUsers() ([]UserView, error)
-	// GetUsersByAppId(appId string) ([]UserView, error)
-	// CreateUser(appId, email, password string) error
-	// ChangeUserPassword(userId, newPassword string) error
-	// ChangeUserEmail(userId, newEmail string) error
-	// RemoveUserById(userId string) error
+	// ChangePassword(sessionToken, oldPassword, newPassword string) error
+	// ChangeEmail(sessionToken, password, newEmail string) error
+	// GetAllUsers() (adminKey, []UserView, error)
+	// GetUsersByAppId(adminKey, appId string) ([]UserView, error)
+	// CreateUser(adminKey, appId, email, password string) error
+	// ChangeUserPassword(adminKey, userId, newPassword string) error
+	// ChangeUserEmail(adminKey, userId, newEmail string) error
+	// RemoveUserById(adminKey, userId string) error
 
-	// RemoveExpiredSessions(appId strings, duration time.Duration) error
+	// RemoveExpiredConfirmationKeys(appId string, maxAge time.Duration) error
+	// RemoveExpiredResetKeys(appId string, maxAge time.Duration) error
+	// RemoveExpiredSessions(appId string, maxAge time.Duration) error
 }
 
 type UserView struct {
