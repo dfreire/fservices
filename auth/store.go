@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	_ "github.com/lib/pq"
+	"github.com/lib/pq"
 )
 
 type store interface {
@@ -120,10 +120,12 @@ func (self storePg) setResetKey(appId, email, resetKey string, setResetKeyAt tim
 }
 
 func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
+	resetKey := sql.NullString{}
+	setResetKeyAt := time.Time{}
 	update := `
 		UPDATE auth.user
-		SET hashedPass = $1, resetKey = NULL, setResetKeyAt = NULL
-		WHERE appId = $2 AND email = $3;
+		SET hashedPass = $1, resetKey = $2, setResetKeyAt = $3
+		WHERE appId = $4 AND email = $5;
 	`
 
 	stmt, err := self.db.Prepare(update)
@@ -131,7 +133,7 @@ func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 		return err
 	}
 
-	_, err = stmt.Exec(hashedPass, appId, email)
+	_, err = stmt.Exec(hashedPass, resetKey, setResetKeyAt, appId, email)
 	return err
 }
 
@@ -156,12 +158,16 @@ func (self storePg) getUserPassword(appId, email string) (userId, hashedPass str
 }
 
 func (self storePg) getUserResetKey(appId, email string) (resetKey string, setResetKeyAt time.Time, err error) {
+	var resetKey2 sql.NullString
+	var setResetKeyAt2 pq.NullTime
 	query := `
 		SELECT resetKey, setResetKeyAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&resetKey, &setResetKeyAt)
+	err = self.db.QueryRow(query, appId, email).Scan(&resetKey2, &setResetKeyAt2)
+	resetKey = resetKey2.String
+	setResetKeyAt = setResetKeyAt2.Time
 	return
 }
 

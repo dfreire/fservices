@@ -12,6 +12,27 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+func createAuthService() (Auth, store, *mailermock.MailerMock) {
+	var authConfig AuthConfig
+	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
+	util.PanicIfNotNil(err)
+
+	db, err := sql.Open("postgres", "postgres://drome:@localhost/fservices_test?sslmode=disable")
+	util.PanicIfNotNil(err)
+	storePg := NewStorePg(db)
+
+	_, err = db.Exec(`
+		CREATE SCHEMA IF NOT EXISTS auth;
+		DROP SCHEMA auth CASCADE;
+	`)
+	util.PanicIfNotNil(err)
+	util.PanicIfNotNil(storePg.createSchema())
+
+	mailer := new(mailermock.MailerMock)
+
+	return NewAuth(authConfig, storePg, mailer), storePg, mailer
+}
+
 func TestSignup(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
 
@@ -150,23 +171,31 @@ func TestForgotPassword(t *testing.T) {
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
 
-func createAuthService() (Auth, store, *mailermock.MailerMock) {
-	var authConfig AuthConfig
-	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
-	util.PanicIfNotNil(err)
+func TestResetPassword(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
-	db, err := sql.Open("postgres", "postgres://drome:@localhost/fservices_test?sslmode=disable")
-	util.PanicIfNotNil(err)
-	storePg := NewStorePg(db)
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
 
-	_, err = db.Exec(`
-		CREATE SCHEMA IF NOT EXISTS auth;
-		DROP SCHEMA auth CASCADE;
-	`)
-	util.PanicIfNotNil(err)
-	util.PanicIfNotNil(storePg.createSchema())
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
 
-	mailer := new(mailermock.MailerMock)
+	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
 
-	return NewAuth(authConfig, storePg, mailer), storePg, mailer
+	resetToken, err := auth.ForgotPasword("myapp", "dario.freire@gmail.com", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ResetPassword(resetToken, "abc"))
+
+	resetKey, setResetKeyAt, err := store.getUserResetKey("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+	assert.Equal(t, "", resetKey)
+	assert.True(t, setResetKeyAt.Equal(time.Time{}))
+
+	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.NotNil(t, err)
+
+	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "abc")
+	assert.Nil(t, err)
 }
