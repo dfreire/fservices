@@ -16,11 +16,12 @@ type Auth interface {
 	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
 	ConfirmSignup(confirmationToken string) error
 	Signin(appId, email, password string) (sessionToken string, err error)
-	Signout(sessionToken string) error
 	ForgotPasword(appId, email, lang string) (resetToken string, err error)
 	ResetPassword(resetToken, newPassword string) error
-	// ChangePassword(sessionToken, oldPassword, newPassword string) error
+	Signout(sessionToken string) error
+	ChangePassword(sessionToken, oldPassword, newPassword string) error
 	// ChangeEmail(sessionToken, password, newEmail string) error
+
 	// GetUsers() (adminToken, []UserView, error)
 	// CreateUser(adminToken, appId, email, password string) error
 	// ChangeUserPassword(adminToken, userId, newPassword string) error
@@ -97,12 +98,12 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 }
 
 func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
-	userId, hashedPass, confirmedAt, err := self.store.getUserPassword(appId, email)
+	userId, hashedPass, confirmationKeyAt, err := self.store.getUserPassword(appId, email)
 	if err != nil {
 		return
 	}
 
-	if confirmedAt.Equal(time.Time{}) {
+	if confirmationKeyAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}
@@ -122,22 +123,13 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	return
 }
 
-func (self authImpl) Signout(sessionToken string) error {
-	sessionId, _, _, err := self.parseSessionToken(sessionToken)
-	if err != nil {
-		return err
-	}
-
-	return self.store.removeSession(sessionId)
-}
-
 func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string, err error) {
-	_, confirmedAt, err := self.store.getUserConfirmation(appId, email)
+	_, confirmationKeyAt, err := self.store.getUserConfirmation(appId, email)
 	if err != nil {
 		return
 	}
 
-	if confirmedAt.Equal(time.Time{}) {
+	if confirmationKeyAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}
@@ -158,7 +150,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return err
 	}
 
-	resetKey, setResetKeyAt, err := self.store.getUserResetKey(appId, email)
+	resetKey, resetKeyAt, err := self.store.getUserResetKey(appId, email)
 	if err != nil {
 		return err
 	}
@@ -167,7 +159,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return errors.New("The reset key is not valid.")
 	}
 
-	if time.Now().After(setResetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
+	if time.Now().After(resetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
 		return errors.New("The reset key has expired.")
 	}
 
@@ -179,6 +171,36 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 	return self.store.setUserHashedPass(appId, email, string(hashedPass))
 }
 
+func (self authImpl) Signout(sessionToken string) error {
+	sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	if err != nil {
+		return err
+	}
+
+	return self.store.removeSession(sessionId)
+}
+
+func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword string) error {
+	// sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// userId, createdAt, err := self.store.getSession(sessionId)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// return self.store.setUserHashedPass(appId, email, string(hashedPass))
+
+	return nil
+}
+
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
@@ -186,15 +208,15 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 	}
 
 	createdAt := time.Now()
-	confirmedAt := time.Time{}
+	confirmationKeyAt := time.Time{}
 
 	if isConfirmed {
-		confirmedAt = createdAt
+		confirmationKeyAt = createdAt
 	} else {
 		confirmationKey = uuid.NewV4().String()
 	}
 
-	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, createdAt, confirmedAt)
+	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, createdAt, confirmationKeyAt)
 	return confirmationKey, err
 }
 

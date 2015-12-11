@@ -10,13 +10,14 @@ import (
 type store interface {
 	createSchema() error
 
-	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error
-	setUserConfirmedAt(appId, email string, confirmedAt time.Time) error
-	setUserResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error
+	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmationKeyAt time.Time) error
+	setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error
+	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
-	getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error)
-	getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error)
-	getUserResetKey(appId, email string) (resetKey string, setResetKeyAt time.Time, err error)
+
+	getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error)
+	getUserPassword(appId, email string) (userId, hashedPass string, confirmationKeyAt time.Time, err error)
+	getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error)
 
 	createSession(id, userId string, createdAt time.Time) error
 	removeSession(id string) error
@@ -38,18 +39,18 @@ func (self storePg) createSchema() error {
 		CREATE TYPE auth.lang AS ENUM ('pt_PT', 'en_US');
 
 		CREATE TABLE auth.user (
-		   id               CHAR(36) NOT NULL,
-		   appId            TEXT NOT NULL,
-		   email            TEXT NOT NULL,
-		   hashedPass       TEXT NOT NULL,
-		   createdAt        TIMESTAMPTZ NOT NULL,
-		   lang             auth.lang NOT NULL,
+		   id                CHAR(36) NOT NULL,
+		   appId             TEXT NOT NULL,
+		   email             TEXT NOT NULL,
+		   hashedPass        TEXT NOT NULL,
+		   createdAt         TIMESTAMPTZ NOT NULL,
+		   lang              auth.lang NOT NULL,
 		   -- confirm
-		   confirmationKey  CHAR(36),
-		   confirmedAt      TIMESTAMPTZ,
+		   confirmationKey   CHAR(36),
+		   confirmationKeyAt TIMESTAMPTZ,
 		   -- reset
-		   resetKey         CHAR(36),
-		   setResetKeyAt    TIMESTAMPTZ,
+		   resetKey          CHAR(36),
+		   resetKeyAt        TIMESTAMPTZ,
 
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
@@ -70,10 +71,10 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmedAt time.Time) error {
+func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmationKeyAt time.Time) error {
 	insert := `
 		INSERT INTO auth.user
-		(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmedAt)
+		(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmationKeyAt)
 		VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8);
 	`
@@ -83,14 +84,14 @@ func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationK
 		return err
 	}
 
-	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmedAt)
+	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmationKeyAt)
 	return err
 }
 
-func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Time) error {
+func (self storePg) setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
-		SET confirmedAt = $1
+		SET confirmationKeyAt = $1
 		WHERE appId = $2 AND email = $3;
 	`
 
@@ -99,14 +100,14 @@ func (self storePg) setUserConfirmedAt(appId, email string, confirmedAt time.Tim
 		return err
 	}
 
-	_, err = stmt.Exec(confirmedAt, appId, email)
+	_, err = stmt.Exec(confirmationKeyAt, appId, email)
 	return err
 }
 
-func (self storePg) setUserResetKey(appId, email, resetKey string, setResetKeyAt time.Time) error {
+func (self storePg) setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
-		SET resetKey = $1, setResetKeyAt = $2
+		SET resetKey = $1, resetKeyAt = $2
 		WHERE appId = $3 AND email = $4;
 	`
 
@@ -115,14 +116,14 @@ func (self storePg) setUserResetKey(appId, email, resetKey string, setResetKeyAt
 		return err
 	}
 
-	_, err = stmt.Exec(resetKey, setResetKeyAt, appId, email)
+	_, err = stmt.Exec(resetKey, resetKeyAt, appId, email)
 	return err
 }
 
 func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 	update := `
 		UPDATE auth.user
-		SET hashedPass = $1, resetKey = NULL, setResetKeyAt = NULL
+		SET hashedPass = $1, resetKey = NULL, resetKeyAt = NULL
 		WHERE appId = $2 AND email = $3;
 	`
 
@@ -135,31 +136,31 @@ func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 	return err
 }
 
-func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmedAt time.Time, err error) {
+func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error) {
 	query := `
-		SELECT confirmationKey, confirmedAt
+		SELECT confirmationKey, confirmationKeyAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&confirmationKey, &confirmedAt)
+	err = self.db.QueryRow(query, appId, email).Scan(&confirmationKey, &confirmationKeyAt)
 	return
 }
 
-func (self storePg) getUserPassword(appId, email string) (userId, hashedPass string, confirmedAt time.Time, err error) {
+func (self storePg) getUserPassword(appId, email string) (userId, hashedPass string, confirmationKeyAt time.Time, err error) {
 	query := `
-		SELECT id, hashedPass, confirmedAt
+		SELECT id, hashedPass, confirmationKeyAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass, &confirmedAt)
+	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass, &confirmationKeyAt)
 	return
 }
 
-func (self storePg) getUserResetKey(appId, email string) (resetKey string, setResetKeyAt time.Time, err error) {
+func (self storePg) getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error) {
 	var scanResetKey sql.NullString
 	var scanSetResetKeyAt pq.NullTime
 	query := `
-		SELECT resetKey, setResetKeyAt
+		SELECT resetKey, resetKeyAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
@@ -168,7 +169,7 @@ func (self storePg) getUserResetKey(appId, email string) (resetKey string, setRe
 		resetKey = scanResetKey.String
 	}
 	if scanSetResetKeyAt.Valid {
-		setResetKeyAt = scanSetResetKeyAt.Time
+		resetKeyAt = scanSetResetKeyAt.Time
 	}
 	return
 }

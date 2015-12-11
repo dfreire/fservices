@@ -45,7 +45,7 @@ func TestSignup(t *testing.T) {
 	appId, email, lang, confirmationKey1, err := auth.(authImpl).parseConfirmationToken(confirmationToken)
 	assert.Nil(t, err)
 
-	confirmationKey2, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	confirmationKey2, confirmationKeyAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
 	assert.Nil(t, err)
 
 	assert.Equal(t, "myapp", appId)
@@ -53,7 +53,7 @@ func TestSignup(t *testing.T) {
 	assert.Equal(t, "en_US", lang)
 	assert.Equal(t, confirmationKey1, confirmationKey2)
 	assert.NotEmpty(t, confirmationKey1)
-	assert.True(t, confirmedAt.Equal(time.Time{}))
+	assert.True(t, confirmationKeyAt.Equal(time.Time{}))
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
@@ -85,11 +85,11 @@ func TestConfirmSignup(t *testing.T) {
 
 	t1 := time.Now()
 
-	_, confirmedAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	_, confirmationKeyAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
 	assert.Nil(t, err)
 
-	assert.True(t, confirmedAt.After(t0))
-	assert.True(t, confirmedAt.Before(t1))
+	assert.True(t, confirmationKeyAt.After(t0))
+	assert.True(t, confirmationKeyAt.Before(t1))
 }
 
 func TestSignin(t *testing.T) {
@@ -157,7 +157,7 @@ func TestForgotPassword(t *testing.T) {
 	appId, email, lang, resetKey1, err := auth.(authImpl).parseResetToken(resetToken)
 	assert.Nil(t, err)
 
-	resetKey2, setResetKeyAt, err := store.getUserResetKey(appId, email)
+	resetKey2, resetKeyAt, err := store.getUserResetKey(appId, email)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "myapp", appId)
@@ -165,8 +165,8 @@ func TestForgotPassword(t *testing.T) {
 	assert.Equal(t, "en_US", lang)
 	assert.Equal(t, resetKey1, resetKey2)
 	assert.NotEmpty(t, resetKey1)
-	assert.True(t, setResetKeyAt.After(t0))
-	assert.True(t, setResetKeyAt.Before(t1))
+	assert.True(t, resetKeyAt.After(t0))
+	assert.True(t, resetKeyAt.Before(t1))
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
@@ -188,10 +188,10 @@ func TestResetPassword(t *testing.T) {
 
 	assert.Nil(t, auth.ResetPassword(resetToken, "abc"))
 
-	resetKey, setResetKeyAt, err := store.getUserResetKey("myapp", "dario.freire@gmail.com")
+	resetKey, resetKeyAt, err := store.getUserResetKey("myapp", "dario.freire@gmail.com")
 	assert.Nil(t, err)
 	assert.Equal(t, "", resetKey)
-	assert.True(t, setResetKeyAt.Equal(time.Time{}))
+	assert.True(t, resetKeyAt.Equal(time.Time{}))
 
 	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "123")
 	assert.NotNil(t, err)
