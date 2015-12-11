@@ -216,7 +216,7 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 		confirmationKey = uuid.NewV4().String()
 	}
 
-	err = self.store.createUser(uuid.NewV4().String(), appId, email, string(hashedPass), lang, confirmationKey, createdAt, confirmationKeyAt)
+	err = self.store.createUser(uuid.NewV4().String(), createdAt, appId, email, string(hashedPass), lang, confirmationKey, confirmationKeyAt)
 	return confirmationKey, err
 }
 

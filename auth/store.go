@@ -10,7 +10,7 @@ import (
 type store interface {
 	createSchema() error
 
-	createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmationKeyAt time.Time) error
+	createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string, confirmationKeyAt time.Time) error
 	setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error
 	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
@@ -40,10 +40,10 @@ func (self storePg) createSchema() error {
 
 		CREATE TABLE auth.user (
 		   id                CHAR(36) NOT NULL,
+		   createdAt         TIMESTAMPTZ NOT NULL,
 		   appId             TEXT NOT NULL,
 		   email             TEXT NOT NULL,
 		   hashedPass        TEXT NOT NULL,
-		   createdAt         TIMESTAMPTZ NOT NULL,
 		   lang              auth.lang NOT NULL,
 		   -- confirm
 		   confirmationKey   CHAR(36),
@@ -71,10 +71,10 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationKey string, createdAt, confirmationKeyAt time.Time) error {
+func (self storePg) createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string, confirmationKeyAt time.Time) error {
 	insert := `
 		INSERT INTO auth.user
-		(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmationKeyAt)
+		(id, createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt)
 		VALUES
 		($1, $2, $3, $4, $5, $6, $7, $8);
 	`
@@ -84,7 +84,7 @@ func (self storePg) createUser(id, appId, email, hashedPass, lang, confirmationK
 		return err
 	}
 
-	_, err = stmt.Exec(id, appId, email, hashedPass, lang, confirmationKey, createdAt, confirmationKeyAt)
+	_, err = stmt.Exec(id, createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt)
 	return err
 }
 
