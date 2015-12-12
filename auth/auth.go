@@ -18,6 +18,7 @@ type Auth interface {
 	Signin(appId, email, password string) (sessionToken string, err error)
 	ForgotPasword(appId, email, lang string) (resetToken string, err error)
 	ResetPassword(resetToken, newPassword string) error
+
 	Signout(sessionToken string) error
 	ChangePassword(sessionToken, oldPassword, newPassword string) error
 	// ChangeEmail(sessionToken, password, newEmail string) error
@@ -71,12 +72,17 @@ func (self authImpl) Signup(appId, email, password, lang string) (confirmationTo
 }
 
 func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error) {
-	confirmationKey, _, err := self.store.getUserConfirmation(appId, email)
+	userId, err := self.store.getUserId(appId, email)
 	if err != nil {
 		return
 	}
 
-	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
+	user, err := self.store.getUser(userId)
+	if err != nil {
+		return
+	}
+
+	return self.sendConfirmationEmail(appId, email, lang, user.confirmationKey)
 }
 
 func (self authImpl) ConfirmSignup(confirmationToken string) error {
@@ -85,12 +91,17 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 		return err
 	}
 
-	confirmationKey, _, err := self.store.getUserConfirmation(appId, email)
+	userId, err := self.store.getUserId(appId, email)
 	if err != nil {
 		return err
 	}
 
-	if tokenConfirmationKey != confirmationKey {
+	user, err := self.store.getUser(userId)
+	if err != nil {
+		return err
+	}
+
+	if tokenConfirmationKey != user.confirmationKey {
 		return errors.New("The confirmation key is not valid.")
 	}
 
@@ -98,17 +109,22 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 }
 
 func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
-	userId, hashedPass, confirmationKeyAt, err := self.store.getUserPassword(appId, email)
+	userId, err := self.store.getUserId(appId, email)
 	if err != nil {
 		return
 	}
 
-	if confirmationKeyAt.Equal(time.Time{}) {
+	user, err := self.store.getUser(userId)
+	if err != nil {
+		return
+	}
+
+	if user.confirmationKeyAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(hashedPass), []byte(password)); err != nil {
+	if err = bcrypt.CompareHashAndPassword([]byte(user.hashedPass), []byte(password)); err != nil {
 		return
 	}
 
@@ -124,12 +140,17 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 }
 
 func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string, err error) {
-	_, confirmationKeyAt, err := self.store.getUserConfirmation(appId, email)
+	userId, err := self.store.getUserId(appId, email)
 	if err != nil {
 		return
 	}
 
-	if confirmationKeyAt.Equal(time.Time{}) {
+	user, err := self.store.getUser(userId)
+	if err != nil {
+		return
+	}
+
+	if user.confirmationKeyAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}

@@ -42,18 +42,20 @@ func TestSignup(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, confirmationToken)
 
-	appId, email, lang, confirmationKey1, err := auth.(authImpl).parseConfirmationToken(confirmationToken)
+	appId, email, lang, confirmationKey, err := auth.(authImpl).parseConfirmationToken(confirmationToken)
 	assert.Nil(t, err)
 
-	confirmationKey2, confirmationKeyAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	userId, err := store.getUserId("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "myapp", appId)
 	assert.Equal(t, "dario.freire@gmail.com", email)
 	assert.Equal(t, "en_US", lang)
-	assert.Equal(t, confirmationKey1, confirmationKey2)
-	assert.NotEmpty(t, confirmationKey1)
-	assert.True(t, confirmationKeyAt.Equal(time.Time{}))
+	assert.Equal(t, confirmationKey, user.confirmationKey)
+	assert.NotEmpty(t, confirmationKey)
+	assert.True(t, user.confirmationKeyAt.Equal(time.Time{}))
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
@@ -85,11 +87,13 @@ func TestConfirmSignup(t *testing.T) {
 
 	t1 := time.Now()
 
-	_, confirmationKeyAt, err := store.getUserConfirmation("myapp", "dario.freire@gmail.com")
+	userId, err := store.getUserId("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
-	assert.True(t, confirmationKeyAt.After(t0))
-	assert.True(t, confirmationKeyAt.Before(t1))
+	assert.True(t, user.confirmationKeyAt.After(t0))
+	assert.True(t, user.confirmationKeyAt.Before(t1))
 }
 
 func TestSignin(t *testing.T) {
@@ -154,20 +158,19 @@ func TestForgotPassword(t *testing.T) {
 
 	t1 := time.Now()
 
-	appId, email, lang, resetKey1, err := auth.(authImpl).parseResetToken(resetToken)
+	appId, email, lang, resetKey, err := auth.(authImpl).parseResetToken(resetToken)
 	assert.Nil(t, err)
 
-	userId, err := store.getUserId(appId, email)
+	userId, err := store.getUserId("myapp", "dario.freire@gmail.com")
 	assert.Nil(t, err)
-
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "myapp", appId)
 	assert.Equal(t, "dario.freire@gmail.com", email)
 	assert.Equal(t, "en_US", lang)
-	assert.Equal(t, resetKey1, user.resetKey)
-	assert.NotEmpty(t, resetKey1)
+	assert.Equal(t, resetKey, user.resetKey)
+	assert.NotEmpty(t, resetKey)
 	assert.True(t, user.resetKeyAt.After(t0))
 	assert.True(t, user.resetKeyAt.Before(t1))
 
@@ -193,7 +196,6 @@ func TestResetPassword(t *testing.T) {
 
 	userId, err := store.getUserId("myapp", "dario.freire@gmail.com")
 	assert.Nil(t, err)
-
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
