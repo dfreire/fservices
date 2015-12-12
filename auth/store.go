@@ -27,12 +27,11 @@ type store interface {
 	setUserConfirmationKeyAt(appId, email string, confirmationKeyAt time.Time) error
 	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
-
 	getUserId(appId, email string) (userId string, err error)
 	getUser(userId string) (user user, err error)
 
-	createSession(id, userId string, createdAt time.Time) error
-	removeSession(id string) error
+	createSession(sessionId, userId string, createdAt time.Time) error
+	removeSession(sessionId string) error
 	getSession(sessionId string) (userId string, createdAt time.Time, err error)
 }
 
@@ -192,7 +191,7 @@ func (self storePg) getUser(userId string) (user user, err error) {
 	return
 }
 
-func (self storePg) createSession(id, userId string, createdAt time.Time) error {
+func (self storePg) createSession(sessionId, userId string, createdAt time.Time) error {
 	insert := `
 		INSERT INTO auth.session
 		(id, userId, createdAt)
@@ -205,11 +204,11 @@ func (self storePg) createSession(id, userId string, createdAt time.Time) error 
 		return err
 	}
 
-	_, err = stmt.Exec(id, userId, createdAt)
+	_, err = stmt.Exec(sessionId, userId, createdAt)
 	return err
 }
 
-func (self storePg) removeSession(id string) error {
+func (self storePg) removeSession(sessionId string) error {
 	delete := `
 		DELETE FROM auth.session
 		WHERE id = $1;
@@ -220,7 +219,7 @@ func (self storePg) removeSession(id string) error {
 		return err
 	}
 
-	_, err = stmt.Exec(id)
+	_, err = stmt.Exec(sessionId)
 	return err
 }
 
