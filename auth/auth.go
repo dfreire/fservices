@@ -21,7 +21,7 @@ type Auth interface {
 
 	Signout(sessionToken string) error
 	ChangePassword(sessionToken, oldPassword, newPassword string) error
-	// ChangeEmail(sessionToken, password, newEmail string) error
+	ChangeEmail(sessionToken, password, newEmail string) error
 
 	// GetUsers() (adminToken, []UserView, error)
 	// CreateUser(adminToken, appId, email, password string) error
@@ -129,13 +129,13 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	}
 
 	sessionId := uuid.NewV4().String()
-	sessionCreatedAt := time.Unix(time.Now().Unix(), 0)
+	sessionCreatedAt := time.Now()
 
 	if err = self.store.createSession(sessionId, userId, sessionCreatedAt); err != nil {
 		return
 	}
 
-	sessionToken, err = self.createSessionToken(sessionId, userId, sessionCreatedAt)
+	sessionToken, err = self.createSessionToken(sessionId)
 	return
 }
 
@@ -198,7 +198,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 }
 
 func (self authImpl) Signout(sessionToken string) error {
-	sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	sessionId, err := self.parseSessionToken(sessionToken)
 	if err != nil {
 		return err
 	}
@@ -207,7 +207,7 @@ func (self authImpl) Signout(sessionToken string) error {
 }
 
 func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword string) error {
-	sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	sessionId, err := self.parseSessionToken(sessionToken)
 	if err != nil {
 		return err
 	}
@@ -217,12 +217,44 @@ func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword strin
 		return err
 	}
 
+	user, err := self.store.getUser(session.userId)
+	if err != nil {
+		return err
+	}
+
+	if err = bcrypt.CompareHashAndPassword([]byte(user.hashedPass), []byte(oldPassword)); err != nil {
+		return err
+	}
+
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
 	if err != nil {
 		return err
 	}
 
 	return self.store.setUserHashedPass(session.userId, string(hashedPass))
+}
+
+func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error {
+	sessionId, err := self.parseSessionToken(sessionToken)
+	if err != nil {
+		return err
+	}
+
+	session, err := self.store.getSession(sessionId)
+	if err != nil {
+		return err
+	}
+
+	user, err := self.store.getUser(session.userId)
+	if err != nil {
+		return err
+	}
+
+	if err = bcrypt.CompareHashAndPassword([]byte(user.hashedPass), []byte(password)); err != nil {
+		return err
+	}
+
+	return self.store.setUserEmail(session.userId, newEmail)
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
@@ -318,15 +350,13 @@ func (self authImpl) parseConfirmationToken(confirmationToken string) (appId, em
 	return
 }
 
-func (self authImpl) createSessionToken(id, userId string, createdAt time.Time) (string, error) {
+func (self authImpl) createSessionToken(sessionId string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["id"] = id
-	token.Claims["userId"] = userId
-	token.Claims["createdAt"] = createdAt.Unix()
+	token.Claims["sessionId"] = sessionId
 	return token.SignedString([]byte(self.cfg.JwtKey))
 }
 
-func (self authImpl) parseSessionToken(sessionToken string) (id, userId string, createdAt time.Time, err error) {
+func (self authImpl) parseSessionToken(sessionToken string) (sessionId string, err error) {
 	token, err := jwt.Parse(sessionToken, func(token *jwt.Token) (interface{}, error) {
 		return []byte(self.cfg.JwtKey), nil
 	})
@@ -337,9 +367,7 @@ func (self authImpl) parseSessionToken(sessionToken string) (id, userId string, 
 		return
 	}
 
-	id = token.Claims["id"].(string)
-	userId = token.Claims["userId"].(string)
-	createdAt = time.Unix(int64(token.Claims["createdAt"].(float64)), 0)
+	sessionId = token.Claims["sessionId"].(string)
 	return
 }
 

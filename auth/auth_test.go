@@ -105,17 +105,25 @@ func TestSignin(t *testing.T) {
 
 	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
 
+	t0 := time.Now()
+
 	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 	assert.NotEmpty(t, sessionToken)
 
-	sessionId, userId, createdAt, err := auth.(authImpl).parseSessionToken(sessionToken)
+	t1 := time.Now()
+
+	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
 	assert.Nil(t, err)
 	session, err := store.getSession(sessionId)
 	assert.Nil(t, err)
 
+	userId, err := store.getUserId("myapp", "dario.freire@gmail.com")
+	assert.Nil(t, err)
+
 	assert.Equal(t, userId, session.userId)
-	assert.True(t, createdAt.Equal(session.createdAt))
+	assert.True(t, session.createdAt.After(t0))
+	assert.True(t, session.createdAt.Before(t1))
 }
 
 func TestForgotPassword(t *testing.T) {
@@ -197,7 +205,7 @@ func TestSignout(t *testing.T) {
 	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	sessionId, _, _, err := auth.(authImpl).parseSessionToken(sessionToken)
+	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId)
@@ -228,5 +236,27 @@ func TestChangePassword(t *testing.T) {
 	assert.NotNil(t, err)
 
 	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "abc")
+	assert.Nil(t, err)
+}
+
+func TestChangeEmail(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	err = auth.ChangeEmail(sessionToken, "123", "dario.freire+changed@gmail.com")
+	assert.Nil(t, err)
+
+	_, err = store.getUserId("myapp", "dario.freire@gmail.com")
+	assert.NotNil(t, err)
+
+	_, err = store.getUserId("myapp", "dario.freire+changed@gmail.com")
 	assert.Nil(t, err)
 }
