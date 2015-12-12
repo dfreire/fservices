@@ -207,24 +207,22 @@ func (self authImpl) Signout(sessionToken string) error {
 }
 
 func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword string) error {
-	// sessionId, _, _, err := self.parseSessionToken(sessionToken)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// session, err := self.store.getSession(sessionId)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// return self.store.setUserHashedPass(appId, email, string(hashedPass))
+	sessionId, _, _, err := self.parseSessionToken(sessionToken)
+	if err != nil {
+		return err
+	}
 
-	return nil
+	session, err := self.store.getSession(sessionId)
+	if err != nil {
+		return err
+	}
+
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return self.store.setUserHashedPass(session.userId, string(hashedPass))
 }
 
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {

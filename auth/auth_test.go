@@ -118,30 +118,6 @@ func TestSignin(t *testing.T) {
 	assert.True(t, createdAt.Equal(session.createdAt))
 }
 
-func TestSignout(t *testing.T) {
-	auth, store, mailerMock := createAuthService()
-	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
-
-	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
-	assert.Nil(t, err)
-
-	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
-
-	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
-	assert.Nil(t, err)
-
-	sessionId, _, _, err := auth.(authImpl).parseSessionToken(sessionToken)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId)
-	assert.Nil(t, err)
-
-	assert.Nil(t, auth.Signout(sessionToken))
-
-	_, err = store.getSession(sessionId)
-	assert.NotNil(t, err)
-}
-
 func TestForgotPassword(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
@@ -201,6 +177,52 @@ func TestResetPassword(t *testing.T) {
 
 	assert.Equal(t, "", user.resetKey)
 	assert.True(t, user.resetKeyAt.Equal(time.Time{}))
+
+	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.NotNil(t, err)
+
+	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "abc")
+	assert.Nil(t, err)
+}
+
+func TestSignout(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	sessionId, _, _, err := auth.(authImpl).parseSessionToken(sessionToken)
+	assert.Nil(t, err)
+
+	_, err = store.getSession(sessionId)
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.Signout(sessionToken))
+
+	_, err = store.getSession(sessionId)
+	assert.NotNil(t, err)
+}
+
+func TestChangePassword(t *testing.T) {
+	auth, _, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	confirmationToken, err := auth.Signup("myapp", "dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	sessionToken, err := auth.Signin("myapp", "dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	err = auth.ChangePassword(sessionToken, "123", "abc")
+	assert.Nil(t, err)
 
 	_, err = auth.Signin("myapp", "dario.freire@gmail.com", "123")
 	assert.NotNil(t, err)
