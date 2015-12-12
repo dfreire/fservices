@@ -33,7 +33,6 @@ type store interface {
 
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmationKeyAt time.Time, err error)
-	// getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error)
 
 	createSession(id, userId string, createdAt time.Time) error
 	removeSession(id string) error
@@ -217,24 +216,6 @@ func (self storePg) getUserPassword(appId, email string) (userId, hashedPass str
 		WHERE appId = $1 AND email = $2;
 	`
 	err = self.db.QueryRow(query, appId, email).Scan(&userId, &hashedPass, &confirmationKeyAt)
-	return
-}
-
-func (self storePg) getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error) {
-	var scanResetKey sql.NullString
-	var scanSetResetKeyAt pq.NullTime
-	query := `
-		SELECT resetKey, resetKeyAt
-		FROM auth.user
-		WHERE appId = $1 AND email = $2;
-	`
-	err = self.db.QueryRow(query, appId, email).Scan(&scanResetKey, &scanSetResetKeyAt)
-	if scanResetKey.Valid {
-		resetKey = scanResetKey.String
-	}
-	if scanSetResetKeyAt.Valid {
-		resetKeyAt = scanSetResetKeyAt.Time
-	}
 	return
 }
 
