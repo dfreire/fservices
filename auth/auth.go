@@ -34,12 +34,6 @@ type Auth interface {
 	// RemoveExpiredSessions(appId string, maxAge time.Duration) error
 }
 
-type UserView struct {
-	Id    string
-	AppId string
-	Email string
-}
-
 type AuthConfig struct {
 	JwtKey                  string
 	MaxResetKeyAgeInMinutes int
