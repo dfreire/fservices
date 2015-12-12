@@ -35,11 +35,13 @@ type Auth interface {
 }
 
 type AuthConfig struct {
-	JwtKey                  string
-	MaxResetKeyAgeInMinutes int
-	FromEmail               string
-	ConfirmationEmail       AuthMailConfig
-	ResetPasswordEmail      AuthMailConfig
+	JwtKey                       string
+	MaxConfirmationKeyAgeInHours int
+	MaxIdleSessionAgeInHours     int
+	MaxResetKeyAgeInMinutes      int
+	FromEmail                    string
+	ConfirmationEmail            AuthMailConfig
+	ResetPasswordEmail           AuthMailConfig
 }
 type AuthMailConfig map[string]struct {
 	Subject string
