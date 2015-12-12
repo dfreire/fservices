@@ -161,14 +161,16 @@ func (self storePg) getUserId(appId, email string) (userId string, err error) {
 }
 
 func (self storePg) getUser(userId string) (user user, err error) {
-	var scanConfirmationKeyAt pq.NullTime
-	var scanResetKey sql.NullString
-	var scanResetKeyAt pq.NullTime
 	query := `
 		SELECT createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
 		FROM auth.user
 		WHERE id = $1;
 	`
+
+	var scanConfirmationKeyAt pq.NullTime
+	var scanResetKey sql.NullString
+	var scanResetKeyAt pq.NullTime
+
 	err = self.db.QueryRow(query, userId).Scan(
 		&user.createdAt,
 		&user.appId,
@@ -190,6 +192,7 @@ func (self storePg) getUser(userId string) (user user, err error) {
 	if scanResetKeyAt.Valid {
 		user.resetKeyAt = scanResetKeyAt.Time
 	}
+
 	return
 }
 
