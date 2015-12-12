@@ -94,7 +94,7 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 		return errors.New("The confirmation key is not valid.")
 	}
 
-	return self.store.setUserConfirmedAt(appId, email, time.Now())
+	return self.store.setUserConfirmationKeyAt(appId, email, time.Now())
 }
 
 func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
@@ -150,16 +150,21 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return err
 	}
 
-	resetKey, resetKeyAt, err := self.store.getUserResetKey(appId, email)
+	userId, err := self.store.getUserId(appId, email)
 	if err != nil {
 		return err
 	}
 
-	if tokenResetKey != resetKey {
+	user, err := self.store.getUser(userId)
+	if err != nil {
+		return err
+	}
+
+	if tokenResetKey != user.resetKey {
 		return errors.New("The reset key is not valid.")
 	}
 
-	if time.Now().After(resetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
+	if time.Now().After(user.resetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
 		return errors.New("The reset key has expired.")
 	}
 
@@ -217,7 +222,7 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 	}
 
 	if isConfirmed {
-		err = self.store.setUserConfirmedAt(appId, email, createdAt)
+		err = self.store.setUserConfirmationKeyAt(appId, email, createdAt)
 	}
 
 	return

@@ -7,17 +7,33 @@ import (
 	"github.com/lib/pq"
 )
 
+type user struct {
+	id                string
+	createdAt         time.Time
+	appId             string
+	email             string
+	hashedPass        string
+	lang              string
+	confirmationKey   string
+	confirmationKeyAt time.Time
+	resetKey          string
+	resetKeyAt        time.Time
+}
+
 type store interface {
 	createSchema() error
 
-	createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error
-	setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error
+	createUser(userId string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error
+	setUserConfirmationKeyAt(appId, email string, confirmationKeyAt time.Time) error
 	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
 
+	getUserId(appId, email string) (userId string, err error)
+	getUser(userId string) (user user, err error)
+
 	getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error)
 	getUserPassword(appId, email string) (userId, hashedPass string, confirmationKeyAt time.Time, err error)
-	getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error)
+	// getUserResetKey(appId, email string) (resetKey string, resetKeyAt time.Time, err error)
 
 	createSession(id, userId string, createdAt time.Time) error
 	removeSession(id string) error
@@ -45,10 +61,8 @@ func (self storePg) createSchema() error {
 		   email             TEXT NOT NULL,
 		   hashedPass        TEXT NOT NULL,
 		   lang              auth.lang NOT NULL,
-		   -- confirm
-		   confirmationKey   CHAR(36),
+		   confirmationKey   CHAR(36) NOT NULL,
 		   confirmationKeyAt TIMESTAMPTZ,
-		   -- reset
 		   resetKey          CHAR(36),
 		   resetKeyAt        TIMESTAMPTZ,
 
@@ -71,7 +85,7 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error {
+func (self storePg) createUser(userId string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error {
 	insert := `
 		INSERT INTO auth.user
 		(id, createdAt, appId, email, hashedPass, lang, confirmationKey)
@@ -84,11 +98,11 @@ func (self storePg) createUser(id string, createdAt time.Time, appId, email, has
 		return err
 	}
 
-	_, err = stmt.Exec(id, createdAt, appId, email, hashedPass, lang, confirmationKey)
+	_, err = stmt.Exec(userId, createdAt, appId, email, hashedPass, lang, confirmationKey)
 	return err
 }
 
-func (self storePg) setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error {
+func (self storePg) setUserConfirmationKeyAt(appId, email string, confirmationKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
 		SET confirmationKeyAt = $1
@@ -134,6 +148,49 @@ func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 
 	_, err = stmt.Exec(hashedPass, appId, email)
 	return err
+}
+
+func (self storePg) getUserId(appId, email string) (userId string, err error) {
+	query := `
+		SELECT id
+		FROM auth.user
+		WHERE appId = $1 AND email = $2;
+	`
+	err = self.db.QueryRow(query, appId, email).Scan(&userId)
+	return
+}
+
+func (self storePg) getUser(userId string) (user user, err error) {
+	var scanConfirmationKeyAt pq.NullTime
+	var scanResetKey sql.NullString
+	var scanResetKeyAt pq.NullTime
+	query := `
+		SELECT createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
+		FROM auth.user
+		WHERE id = $1;
+	`
+	err = self.db.QueryRow(query, userId).Scan(
+		&user.createdAt,
+		&user.appId,
+		&user.email,
+		&user.hashedPass,
+		&user.lang,
+		&user.confirmationKey,
+		&scanConfirmationKeyAt,
+		&scanResetKey,
+		&scanResetKeyAt,
+	)
+
+	if scanConfirmationKeyAt.Valid {
+		user.confirmationKeyAt = scanConfirmationKeyAt.Time
+	}
+	if scanResetKey.Valid {
+		user.resetKey = scanResetKey.String
+	}
+	if scanResetKeyAt.Valid {
+		user.resetKeyAt = scanResetKeyAt.Time
+	}
+	return
 }
 
 func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error) {
