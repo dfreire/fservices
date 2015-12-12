@@ -105,7 +105,7 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 		return errors.New("The confirmation key is not valid.")
 	}
 
-	return self.store.setUserConfirmationKeyAt(appId, email, time.Now())
+	return self.store.setUserConfirmationKeyAt(userId, time.Now())
 }
 
 func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
@@ -157,7 +157,7 @@ func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string
 
 	resetKey := uuid.NewV4().String()
 
-	err = self.store.setUserResetKey(appId, email, resetKey, time.Now())
+	err = self.store.setUserResetKey(userId, resetKey, time.Now())
 	if err != nil {
 		return
 	}
@@ -194,7 +194,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return err
 	}
 
-	return self.store.setUserHashedPass(appId, email, string(hashedPass))
+	return self.store.setUserHashedPass(userId, string(hashedPass))
 }
 
 func (self authImpl) Signout(sessionToken string) error {
@@ -212,7 +212,7 @@ func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword strin
 	// 	return err
 	// }
 	//
-	// userId, createdAt, err := self.store.getSession(sessionId)
+	// session, err := self.store.getSession(sessionId)
 	// if err != nil {
 	// 	return err
 	// }
@@ -243,7 +243,7 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 	}
 
 	if isConfirmed {
-		err = self.store.setUserConfirmationKeyAt(appId, email, createdAt)
+		err = self.store.setUserConfirmationKeyAt(userId, createdAt)
 	}
 
 	return

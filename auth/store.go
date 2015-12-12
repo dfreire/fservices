@@ -30,9 +30,9 @@ type store interface {
 	createSchema() error
 
 	createUser(userId string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error
-	setUserConfirmationKeyAt(appId, email string, confirmationKeyAt time.Time) error
-	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
-	setUserHashedPass(appId, email, hashedPass string) error
+	setUserConfirmationKeyAt(userId string, confirmationKeyAt time.Time) error
+	setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error
+	setUserHashedPass(userId, hashedPass string) error
 	getUserId(appId, email string) (userId string, err error)
 	getUser(userId string) (user user, err error)
 
@@ -103,11 +103,11 @@ func (self storePg) createUser(userId string, createdAt time.Time, appId, email,
 	return err
 }
 
-func (self storePg) setUserConfirmationKeyAt(appId, email string, confirmationKeyAt time.Time) error {
+func (self storePg) setUserConfirmationKeyAt(userId string, confirmationKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
 		SET confirmationKeyAt = $1
-		WHERE appId = $2 AND email = $3;
+		WHERE id = $2;
 	`
 
 	stmt, err := self.db.Prepare(update)
@@ -115,15 +115,15 @@ func (self storePg) setUserConfirmationKeyAt(appId, email string, confirmationKe
 		return err
 	}
 
-	_, err = stmt.Exec(confirmationKeyAt, appId, email)
+	_, err = stmt.Exec(confirmationKeyAt, userId)
 	return err
 }
 
-func (self storePg) setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error {
+func (self storePg) setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error {
 	update := `
 		UPDATE auth.user
 		SET resetKey = $1, resetKeyAt = $2
-		WHERE appId = $3 AND email = $4;
+		WHERE id = $3;
 	`
 
 	stmt, err := self.db.Prepare(update)
@@ -131,15 +131,15 @@ func (self storePg) setUserResetKey(appId, email, resetKey string, resetKeyAt ti
 		return err
 	}
 
-	_, err = stmt.Exec(resetKey, resetKeyAt, appId, email)
+	_, err = stmt.Exec(resetKey, resetKeyAt, userId)
 	return err
 }
 
-func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
+func (self storePg) setUserHashedPass(userId, hashedPass string) error {
 	update := `
 		UPDATE auth.user
 		SET hashedPass = $1, resetKey = NULL, resetKeyAt = NULL
-		WHERE appId = $2 AND email = $3;
+		WHERE id = $2;
 	`
 
 	stmt, err := self.db.Prepare(update)
@@ -147,7 +147,7 @@ func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 		return err
 	}
 
-	_, err = stmt.Exec(hashedPass, appId, email)
+	_, err = stmt.Exec(hashedPass, userId)
 	return err
 }
 
