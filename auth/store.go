@@ -20,6 +20,12 @@ type user struct {
 	resetKeyAt        time.Time
 }
 
+type session struct {
+	id        string
+	userId    string
+	createdAt time.Time
+}
+
 type store interface {
 	createSchema() error
 
@@ -32,7 +38,7 @@ type store interface {
 
 	createSession(sessionId, userId string, createdAt time.Time) error
 	removeSession(sessionId string) error
-	getSession(sessionId string) (userId string, createdAt time.Time, err error)
+	getSession(sessionId string) (session session, err error)
 }
 
 type storePg struct {
@@ -156,6 +162,8 @@ func (self storePg) getUserId(appId, email string) (userId string, err error) {
 }
 
 func (self storePg) getUser(userId string) (user user, err error) {
+	user.id = userId
+
 	query := `
 		SELECT createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
 		FROM auth.user
@@ -223,12 +231,13 @@ func (self storePg) removeSession(sessionId string) error {
 	return err
 }
 
-func (self storePg) getSession(sessionId string) (userId string, createdAt time.Time, err error) {
+func (self storePg) getSession(sessionId string) (session session, err error) {
+	session.id = sessionId
 	query := `
 		SELECT userId, createdAt
 		FROM auth.session
 		WHERE id = $1;
 	`
-	err = self.db.QueryRow(query, sessionId).Scan(&userId, &createdAt)
+	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.createdAt)
 	return
 }

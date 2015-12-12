@@ -109,13 +109,13 @@ func TestSignin(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, sessionToken)
 
-	sessionId, userId1, createdAt1, err := auth.(authImpl).parseSessionToken(sessionToken)
+	sessionId, userId, createdAt, err := auth.(authImpl).parseSessionToken(sessionToken)
 	assert.Nil(t, err)
-	userId2, createdAt2, err := store.getSession(sessionId)
+	session, err := store.getSession(sessionId)
 	assert.Nil(t, err)
 
-	assert.Equal(t, userId1, userId2)
-	assert.True(t, createdAt1.Equal(createdAt2))
+	assert.Equal(t, userId, session.userId)
+	assert.True(t, createdAt.Equal(session.createdAt))
 }
 
 func TestSignout(t *testing.T) {
@@ -133,12 +133,12 @@ func TestSignout(t *testing.T) {
 	sessionId, _, _, err := auth.(authImpl).parseSessionToken(sessionToken)
 	assert.Nil(t, err)
 
-	_, _, err = store.getSession(sessionId)
+	_, err = store.getSession(sessionId)
 	assert.Nil(t, err)
 
 	assert.Nil(t, auth.Signout(sessionToken))
 
-	_, _, err = store.getSession(sessionId)
+	_, err = store.getSession(sessionId)
 	assert.NotNil(t, err)
 }
 
