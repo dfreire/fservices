@@ -10,7 +10,7 @@ import (
 type store interface {
 	createSchema() error
 
-	createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string, confirmationKeyAt time.Time) error
+	createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error
 	setUserConfirmedAt(appId, email string, confirmationKeyAt time.Time) error
 	setUserResetKey(appId, email, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(appId, email, hashedPass string) error
@@ -71,12 +71,12 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string, confirmationKeyAt time.Time) error {
+func (self storePg) createUser(id string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error {
 	insert := `
 		INSERT INTO auth.user
-		(id, createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt)
+		(id, createdAt, appId, email, hashedPass, lang, confirmationKey)
 		VALUES
-		($1, $2, $3, $4, $5, $6, $7, $8);
+		($1, $2, $3, $4, $5, $6, $7);
 	`
 
 	stmt, err := self.db.Prepare(insert)
@@ -84,7 +84,7 @@ func (self storePg) createUser(id string, createdAt time.Time, appId, email, has
 		return err
 	}
 
-	_, err = stmt.Exec(id, createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt)
+	_, err = stmt.Exec(id, createdAt, appId, email, hashedPass, lang, confirmationKey)
 	return err
 }
 
@@ -137,12 +137,16 @@ func (self storePg) setUserHashedPass(appId, email, hashedPass string) error {
 }
 
 func (self storePg) getUserConfirmation(appId, email string) (confirmationKey string, confirmationKeyAt time.Time, err error) {
+	var scanConfirmationKeyAt pq.NullTime
 	query := `
 		SELECT confirmationKey, confirmationKeyAt
 		FROM auth.user
 		WHERE appId = $1 AND email = $2;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&confirmationKey, &confirmationKeyAt)
+	err = self.db.QueryRow(query, appId, email).Scan(&confirmationKey, &scanConfirmationKeyAt)
+	if scanConfirmationKeyAt.Valid {
+		confirmationKeyAt = scanConfirmationKeyAt.Time
+	}
 	return
 }
 

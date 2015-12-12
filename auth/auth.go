@@ -204,20 +204,23 @@ func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword strin
 func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return "", err
+		return
 	}
 
+	userId := uuid.NewV4().String()
 	createdAt := time.Now()
-	confirmationKeyAt := time.Time{}
+	confirmationKey = uuid.NewV4().String()
+
+	err = self.store.createUser(userId, createdAt, appId, email, string(hashedPass), lang, confirmationKey)
+	if err != nil {
+		return
+	}
 
 	if isConfirmed {
-		confirmationKeyAt = createdAt
-	} else {
-		confirmationKey = uuid.NewV4().String()
+		err = self.store.setUserConfirmedAt(appId, email, createdAt)
 	}
 
-	err = self.store.createUser(uuid.NewV4().String(), createdAt, appId, email, string(hashedPass), lang, confirmationKey, confirmationKeyAt)
-	return confirmationKey, err
+	return
 }
 
 func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey string) (confirmationToken string, err error) {
