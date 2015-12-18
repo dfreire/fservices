@@ -1,4 +1,5 @@
-JwtKey = "981c5604-b982-482e-b6e9-6adbe8ea04ae"
+AdminKey = "ba5a5c16-840a-4a01-8817-3799d0492551"
+JwtKey   = "981c5604-b982-482e-b6e9-6adbe8ea04ae"
 
 MaxConfirmationKeyAgeInHours = 72
 MaxIdleSessionAgeInHours     = 72

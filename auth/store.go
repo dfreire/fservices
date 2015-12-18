@@ -19,6 +19,14 @@ type user struct {
 	resetKeyAt      time.Time
 }
 
+type User struct {
+	Id          string
+	CreatedAt   time.Time
+	Email       string
+	Lang        string
+	ConfirmedAt time.Time
+}
+
 type session struct {
 	id        string
 	userId    string
@@ -35,6 +43,7 @@ type store interface {
 	setUserEmail(userId, email string) error
 	getUserId(email string) (userId string, err error)
 	getUser(userId string) (user user, err error)
+	getAllUsers() (users []User, err error)
 
 	createSession(sessionId, userId string, createdAt time.Time) error
 	removeSession(sessionId string) error
@@ -185,7 +194,7 @@ func (self storePg) getUser(userId string) (user user, err error) {
 		WHERE id = $1;
 	`
 
-	var scanconfirmedAt pq.NullTime
+	var scanConfirmedAt pq.NullTime
 	var scanResetKey sql.NullString
 	var scanResetKeyAt pq.NullTime
 
@@ -195,13 +204,13 @@ func (self storePg) getUser(userId string) (user user, err error) {
 		&user.hashedPass,
 		&user.lang,
 		&user.confirmationKey,
-		&scanconfirmedAt,
+		&scanConfirmedAt,
 		&scanResetKey,
 		&scanResetKeyAt,
 	)
 
-	if scanconfirmedAt.Valid {
-		user.confirmedAt = scanconfirmedAt.Time
+	if scanConfirmedAt.Valid {
+		user.confirmedAt = scanConfirmedAt.Time
 	}
 	if scanResetKey.Valid {
 		user.resetKey = scanResetKey.String
@@ -210,6 +219,35 @@ func (self storePg) getUser(userId string) (user user, err error) {
 		user.resetKeyAt = scanResetKeyAt.Time
 	}
 
+	return
+}
+
+func (self storePg) getAllUsers() (users []User, err error) {
+	query := `
+		SELECT id, createdAt, email, lang, confirmedAt
+		FROM auth.user;
+	`
+
+	var scanConfirmedAt pq.NullTime
+
+	rows, err := self.db.Query(query)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		user := User{}
+		err = rows.Scan(&user.Id, &user.CreatedAt, &user.Email, &user.Lang, &scanConfirmedAt)
+		if err != nil {
+			return
+		}
+		if scanConfirmedAt.Valid {
+			user.ConfirmedAt = scanConfirmedAt.Time
+		}
+		users = append(users, user)
+	}
+	err = rows.Err()
 	return
 }
 

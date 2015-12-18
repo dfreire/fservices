@@ -23,11 +23,11 @@ type Auth interface {
 	ChangePassword(sessionToken, oldPassword, newPassword string) error
 	ChangeEmail(sessionToken, password, newEmail string) error
 
-	// GetUsers(adminToken string) ([]UserView, error)
-	// CreateUser(adminToken, email, password string) error
-	// ChangeUserPassword(adminToken, userId, newPassword string) error
-	// ChangeUserEmail(adminToken, userId, newEmail string) error
-	// RemoveUserById(adminToken, userId string) error
+	GetUsers(adminKey string) ([]User, error)
+	// CreateUser(adminKey, email, password string) error
+	// ChangeUserPassword(adminKey, userId, newPassword string) error
+	// ChangeUserEmail(adminKey, userId, newEmail string) error
+	// RemoveUserById(adminKey, userId string) error
 
 	// RemoveExpiredConfirmationKeys(maxAge time.Duration) error
 	// RemoveExpiredResetKeys(maxAge time.Duration) error
@@ -35,6 +35,7 @@ type Auth interface {
 }
 
 type AuthConfig struct {
+	AdminKey                     string
 	JwtKey                       string
 	MaxConfirmationKeyAgeInHours int
 	MaxIdleSessionAgeInHours     int
@@ -251,6 +252,14 @@ func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error 
 	}
 
 	return self.store.setUserEmail(session.userId, newEmail)
+}
+
+func (self authImpl) GetUsers(adminKey string) ([]User, error) {
+	if adminKey != self.cfg.AdminKey {
+		return []User{}, errors.New("Unauthorized")
+	}
+
+	return self.store.getAllUsers()
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
