@@ -24,7 +24,7 @@ type Auth interface {
 	ChangeEmail(sessionToken, password, newEmail string) error
 
 	GetUsers(adminKey string) ([]User, error)
-	// CreateUser(adminKey, email, password string) error
+	CreateUser(adminKey, email, password, lang string) error
 	// ChangeUserPassword(adminKey, userId, newPassword string) error
 	// ChangeUserEmail(adminKey, userId, newEmail string) error
 	// RemoveUserById(adminKey, userId string) error
@@ -260,6 +260,15 @@ func (self authImpl) GetUsers(adminKey string) ([]User, error) {
 	}
 
 	return self.store.getAllUsers()
+}
+
+func (self authImpl) CreateUser(adminKey, email, password, lang string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	_, err := self.createUser(email, password, lang, true)
+	return err
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {

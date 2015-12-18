@@ -258,3 +258,65 @@ func TestChangeEmail(t *testing.T) {
 	_, err = store.getUserId("dario.freire+changed@gmail.com")
 	assert.Nil(t, err)
 }
+
+func TestGetUsers(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	t0 := time.Now()
+
+	confirmationToken, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
+
+	_, err = auth.Signup("dario.freire+unconfirmed@gmail.com", "abc", "pt_PT")
+	assert.Nil(t, err)
+
+	t1 := time.Now()
+
+	users, err := store.getAllUsers()
+	assert.Nil(t, err)
+
+	assert.NotEmpty(t, users[0].Id)
+	assert.True(t, users[0].CreatedAt.After(t0))
+	assert.True(t, users[0].CreatedAt.Before(t1))
+	assert.Equal(t, "dario.freire@gmail.com", users[0].Email)
+	assert.Equal(t, "en_US", users[0].Lang)
+	assert.True(t, users[0].ConfirmedAt.After(t0))
+	assert.True(t, users[0].ConfirmedAt.Before(t1))
+
+	assert.NotEmpty(t, users[1].Id)
+	assert.True(t, users[1].CreatedAt.After(t0))
+	assert.True(t, users[1].CreatedAt.Before(t1))
+	assert.Equal(t, "dario.freire+unconfirmed@gmail.com", users[1].Email)
+	assert.Equal(t, "pt_PT", users[1].Lang)
+	assert.True(t, users[1].ConfirmedAt.Equal(time.Time{}))
+}
+
+func TestCreateUser(t *testing.T) {
+	auth, store, _ := createAuthService()
+
+	t0 := time.Now()
+
+	assert.Nil(t, auth.CreateUser("ba5a5c16-840a-4a01-8817-3799d0492551", "dario.freire@gmail.com", "123", "en_US"))
+
+	t1 := time.Now()
+
+	userId, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+
+	user, err := store.getUser(userId)
+	assert.Nil(t, err)
+
+	assert.NotEmpty(t, user.id)
+	assert.True(t, user.createdAt.After(t0))
+	assert.True(t, user.createdAt.Before(t1))
+	assert.Equal(t, "dario.freire@gmail.com", user.email)
+	assert.Equal(t, "en_US", user.lang)
+	assert.True(t, user.confirmedAt.Equal(user.createdAt))
+
+	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, sessionToken)
+}
