@@ -12,26 +12,26 @@ import (
 )
 
 type Auth interface {
-	Signup(appId, email, password, lang string) (confirmationToken string, err error)
-	ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error)
+	Signup(email, password, lang string) (confirmationToken string, err error)
+	ResendConfirmationMail(email, lang string) (confirmationToken string, err error)
 	ConfirmSignup(confirmationToken string) error
-	Signin(appId, email, password string) (sessionToken string, err error)
-	ForgotPasword(appId, email, lang string) (resetToken string, err error)
+	Signin(email, password string) (sessionToken string, err error)
+	ForgotPasword(email, lang string) (resetToken string, err error)
 	ResetPassword(resetToken, newPassword string) error
 
 	Signout(sessionToken string) error
 	ChangePassword(sessionToken, oldPassword, newPassword string) error
 	ChangeEmail(sessionToken, password, newEmail string) error
 
-	// GetUsers() (adminToken, []UserView, error)
-	// CreateUser(adminToken, appId, email, password string) error
+	// GetUsers(adminToken string) ([]UserView, error)
+	// CreateUser(adminToken, email, password string) error
 	// ChangeUserPassword(adminToken, userId, newPassword string) error
 	// ChangeUserEmail(adminToken, userId, newEmail string) error
 	// RemoveUserById(adminToken, userId string) error
 
-	// RemoveExpiredConfirmationKeys(appId string, maxAge time.Duration) error
-	// RemoveExpiredResetKeys(appId string, maxAge time.Duration) error
-	// RemoveExpiredSessions(appId string, maxAge time.Duration) error
+	// RemoveExpiredConfirmationKeys(maxAge time.Duration) error
+	// RemoveExpiredResetKeys(maxAge time.Duration) error
+	// RemoveExpiredSessions(maxAge time.Duration) error
 }
 
 type AuthConfig struct {
@@ -58,17 +58,17 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 	return authImpl{cfg, store, mailer}
 }
 
-func (self authImpl) Signup(appId, email, password, lang string) (confirmationToken string, err error) {
-	confirmationKey, err := self.createUser(appId, email, password, lang, false)
+func (self authImpl) Signup(email, password, lang string) (confirmationToken string, err error) {
+	confirmationKey, err := self.createUser(email, password, lang, false)
 	if err != nil {
 		return
 	}
 
-	return self.sendConfirmationEmail(appId, email, lang, confirmationKey)
+	return self.sendConfirmationEmail(email, lang, confirmationKey)
 }
 
-func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirmationToken string, err error) {
-	userId, err := self.store.getUserId(appId, email)
+func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationToken string, err error) {
+	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return
 	}
@@ -78,16 +78,16 @@ func (self authImpl) ResendConfirmationMail(appId, email, lang string) (confirma
 		return
 	}
 
-	return self.sendConfirmationEmail(appId, email, lang, user.confirmationKey)
+	return self.sendConfirmationEmail(email, lang, user.confirmationKey)
 }
 
 func (self authImpl) ConfirmSignup(confirmationToken string) error {
-	appId, email, _, tokenConfirmationKey, err := self.parseConfirmationToken(confirmationToken)
+	email, _, tokenConfirmationKey, err := self.parseConfirmationToken(confirmationToken)
 	if err != nil {
 		return err
 	}
 
-	userId, err := self.store.getUserId(appId, email)
+	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return err
 	}
@@ -104,8 +104,8 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 	return self.store.setUserConfirmationKeyAt(userId, time.Now())
 }
 
-func (self authImpl) Signin(appId, email, password string) (sessionToken string, err error) {
-	userId, err := self.store.getUserId(appId, email)
+func (self authImpl) Signin(email, password string) (sessionToken string, err error) {
+	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return
 	}
@@ -135,8 +135,8 @@ func (self authImpl) Signin(appId, email, password string) (sessionToken string,
 	return
 }
 
-func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string, err error) {
-	userId, err := self.store.getUserId(appId, email)
+func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err error) {
+	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return
 	}
@@ -158,16 +158,16 @@ func (self authImpl) ForgotPasword(appId, email, lang string) (resetToken string
 		return
 	}
 
-	return self.sendResetPaswordEmail(appId, email, lang, resetKey)
+	return self.sendResetPaswordEmail(email, lang, resetKey)
 }
 
 func (self authImpl) ResetPassword(resetToken, newPassword string) error {
-	appId, email, _, tokenResetKey, err := self.parseResetToken(resetToken)
+	email, _, tokenResetKey, err := self.parseResetToken(resetToken)
 	if err != nil {
 		return err
 	}
 
-	userId, err := self.store.getUserId(appId, email)
+	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error 
 	return self.store.setUserEmail(session.userId, newEmail)
 }
 
-func (self authImpl) createUser(appId, email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
+func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
 	hashedPass, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return
@@ -263,7 +263,7 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 	createdAt := time.Now()
 	confirmationKey = uuid.NewV4().String()
 
-	err = self.store.createUser(userId, createdAt, appId, email, string(hashedPass), lang, confirmationKey)
+	err = self.store.createUser(userId, createdAt, email, string(hashedPass), lang, confirmationKey)
 	if err != nil {
 		return
 	}
@@ -275,8 +275,8 @@ func (self authImpl) createUser(appId, email, password, lang string, isConfirmed
 	return
 }
 
-func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey string) (confirmationToken string, err error) {
-	confirmationToken, err = self.createConfirmationToken(appId, email, lang, confirmationKey)
+func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) (confirmationToken string, err error) {
+	confirmationToken, err = self.createConfirmationToken(email, lang, confirmationKey)
 	if err != nil {
 		return
 	}
@@ -297,8 +297,8 @@ func (self authImpl) sendConfirmationEmail(appId, email, lang, confirmationKey s
 	return confirmationToken, self.mailer.Send(mail)
 }
 
-func (self authImpl) sendResetPaswordEmail(appId, email, lang, resetKey string) (resetToken string, err error) {
-	resetToken, err = self.createResetToken(appId, email, lang, resetKey)
+func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetToken string, err error) {
+	resetToken, err = self.createResetToken(email, lang, resetKey)
 	if err != nil {
 		return
 	}
@@ -319,16 +319,15 @@ func (self authImpl) sendResetPaswordEmail(appId, email, lang, resetKey string) 
 	return resetToken, self.mailer.Send(mail)
 }
 
-func (self authImpl) createConfirmationToken(appId, email, lang, confirmationKey string) (string, error) {
+func (self authImpl) createConfirmationToken(email, lang, confirmationKey string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["appId"] = appId
 	token.Claims["email"] = email
 	token.Claims["lang"] = lang
 	token.Claims["confirmationKey"] = confirmationKey
 	return token.SignedString([]byte(self.cfg.JwtKey))
 }
 
-func (self authImpl) parseConfirmationToken(confirmationToken string) (appId, email, lang, confirmationKey string, err error) {
+func (self authImpl) parseConfirmationToken(confirmationToken string) (email, lang, confirmationKey string, err error) {
 	token, err := jwt.Parse(confirmationToken, func(token *jwt.Token) (interface{}, error) {
 		return []byte(self.cfg.JwtKey), nil
 	})
@@ -339,7 +338,6 @@ func (self authImpl) parseConfirmationToken(confirmationToken string) (appId, em
 		return
 	}
 
-	appId = token.Claims["appId"].(string)
 	email = token.Claims["email"].(string)
 	lang = token.Claims["lang"].(string)
 	confirmationKey = token.Claims["confirmationKey"].(string)
@@ -367,16 +365,15 @@ func (self authImpl) parseSessionToken(sessionToken string) (sessionId string, e
 	return
 }
 
-func (self authImpl) createResetToken(appId, email, lang, resetKey string) (string, error) {
+func (self authImpl) createResetToken(email, lang, resetKey string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["appId"] = appId
 	token.Claims["email"] = email
 	token.Claims["lang"] = lang
 	token.Claims["resetKey"] = resetKey
 	return token.SignedString([]byte(self.cfg.JwtKey))
 }
 
-func (self authImpl) parseResetToken(resetToken string) (appId, email, lang, resetKey string, err error) {
+func (self authImpl) parseResetToken(resetToken string) (email, lang, resetKey string, err error) {
 	token, err := jwt.Parse(resetToken, func(token *jwt.Token) (interface{}, error) {
 		return []byte(self.cfg.JwtKey), nil
 	})
@@ -387,7 +384,6 @@ func (self authImpl) parseResetToken(resetToken string) (appId, email, lang, res
 		return
 	}
 
-	appId = token.Claims["appId"].(string)
 	email = token.Claims["email"].(string)
 	lang = token.Claims["lang"].(string)
 	resetKey = token.Claims["resetKey"].(string)

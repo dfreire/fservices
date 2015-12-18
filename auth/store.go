@@ -10,7 +10,6 @@ import (
 type user struct {
 	id                string
 	createdAt         time.Time
-	appId             string
 	email             string
 	hashedPass        string
 	lang              string
@@ -29,12 +28,12 @@ type session struct {
 type store interface {
 	createSchema() error
 
-	createUser(userId string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error
+	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
 	setUserConfirmationKeyAt(userId string, confirmationKeyAt time.Time) error
 	setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(userId, hashedPass string) error
 	setUserEmail(userId, email string) error
-	getUserId(appId, email string) (userId string, err error)
+	getUserId(email string) (userId string, err error)
 	getUser(userId string) (user user, err error)
 
 	createSession(sessionId, userId string, createdAt time.Time) error
@@ -59,7 +58,6 @@ func (self storePg) createSchema() error {
 		CREATE TABLE auth.user (
 		   id                CHAR(36) NOT NULL,
 		   createdAt         TIMESTAMPTZ NOT NULL,
-		   appId             TEXT NOT NULL,
 		   email             TEXT NOT NULL,
 		   hashedPass        TEXT NOT NULL,
 		   lang              auth.lang NOT NULL,
@@ -71,7 +69,7 @@ func (self storePg) createSchema() error {
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
 
-		CREATE UNIQUE INDEX idx_auth_user_appId_email ON auth.user (appId, email);
+		CREATE UNIQUE INDEX idx_auth_user_email ON auth.user (email);
 
 		CREATE TABLE auth.session (
 			id         CHAR(36) NOT NULL,
@@ -87,12 +85,12 @@ func (self storePg) createSchema() error {
 	return err
 }
 
-func (self storePg) createUser(userId string, createdAt time.Time, appId, email, hashedPass, lang, confirmationKey string) error {
+func (self storePg) createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error {
 	insert := `
 		INSERT INTO auth.user
-		(id, createdAt, appId, email, hashedPass, lang, confirmationKey)
+		(id, createdAt, email, hashedPass, lang, confirmationKey)
 		VALUES
-		($1, $2, $3, $4, $5, $6, $7);
+		($1, $2, $3, $4, $5, $6);
 	`
 
 	stmt, err := self.db.Prepare(insert)
@@ -100,7 +98,7 @@ func (self storePg) createUser(userId string, createdAt time.Time, appId, email,
 		return err
 	}
 
-	_, err = stmt.Exec(userId, createdAt, appId, email, hashedPass, lang, confirmationKey)
+	_, err = stmt.Exec(userId, createdAt, email, hashedPass, lang, confirmationKey)
 	return err
 }
 
@@ -168,13 +166,13 @@ func (self storePg) setUserEmail(userId, email string) error {
 	return err
 }
 
-func (self storePg) getUserId(appId, email string) (userId string, err error) {
+func (self storePg) getUserId(email string) (userId string, err error) {
 	query := `
 		SELECT id
 		FROM auth.user
-		WHERE appId = $1 AND email = $2;
+		WHERE email = $1;
 	`
-	err = self.db.QueryRow(query, appId, email).Scan(&userId)
+	err = self.db.QueryRow(query, email).Scan(&userId)
 	return
 }
 
@@ -182,7 +180,7 @@ func (self storePg) getUser(userId string) (user user, err error) {
 	user.id = userId
 
 	query := `
-		SELECT createdAt, appId, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
+		SELECT createdAt, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
 		FROM auth.user
 		WHERE id = $1;
 	`
@@ -193,7 +191,6 @@ func (self storePg) getUser(userId string) (user user, err error) {
 
 	err = self.db.QueryRow(query, userId).Scan(
 		&user.createdAt,
-		&user.appId,
 		&user.email,
 		&user.hashedPass,
 		&user.lang,
