@@ -54,7 +54,7 @@ func TestSignup(t *testing.T) {
 	assert.Equal(t, "en_US", lang)
 	assert.Equal(t, confirmationKey, user.confirmationKey)
 	assert.NotEmpty(t, confirmationKey)
-	assert.True(t, user.confirmationKeyAt.Equal(time.Time{}))
+	assert.True(t, user.confirmedAt.Equal(time.Time{}))
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)
 }
@@ -91,8 +91,8 @@ func TestConfirmSignup(t *testing.T) {
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
-	assert.True(t, user.confirmationKeyAt.After(t0))
-	assert.True(t, user.confirmationKeyAt.Before(t1))
+	assert.True(t, user.confirmedAt.After(t0))
+	assert.True(t, user.confirmedAt.Before(t1))
 }
 
 func TestSignin(t *testing.T) {

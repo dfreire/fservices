@@ -8,15 +8,15 @@ import (
 )
 
 type user struct {
-	id                string
-	createdAt         time.Time
-	email             string
-	hashedPass        string
-	lang              string
-	confirmationKey   string
-	confirmationKeyAt time.Time
-	resetKey          string
-	resetKeyAt        time.Time
+	id              string
+	createdAt       time.Time
+	email           string
+	hashedPass      string
+	lang            string
+	confirmationKey string
+	confirmedAt     time.Time
+	resetKey        string
+	resetKeyAt      time.Time
 }
 
 type session struct {
@@ -29,7 +29,7 @@ type store interface {
 	createSchema() error
 
 	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
-	setUserConfirmationKeyAt(userId string, confirmationKeyAt time.Time) error
+	setUserConfirmedAt(userId string, confirmedAt time.Time) error
 	setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(userId, hashedPass string) error
 	setUserEmail(userId, email string) error
@@ -56,15 +56,15 @@ func (self storePg) createSchema() error {
 		CREATE TYPE auth.lang AS ENUM ('pt_PT', 'en_US');
 
 		CREATE TABLE auth.user (
-		   id                CHAR(36) NOT NULL,
-		   createdAt         TIMESTAMPTZ NOT NULL,
-		   email             TEXT NOT NULL,
-		   hashedPass        TEXT NOT NULL,
-		   lang              auth.lang NOT NULL,
-		   confirmationKey   CHAR(36) NOT NULL,
-		   confirmationKeyAt TIMESTAMPTZ,
-		   resetKey          CHAR(36),
-		   resetKeyAt        TIMESTAMPTZ,
+		   id               CHAR(36) NOT NULL,
+		   createdAt        TIMESTAMPTZ NOT NULL,
+		   email            TEXT NOT NULL,
+		   hashedPass       TEXT NOT NULL,
+		   lang             auth.lang NOT NULL,
+		   confirmationKey  CHAR(36) NOT NULL,
+		   confirmedAt      TIMESTAMPTZ,
+		   resetKey         CHAR(36),
+		   resetKeyAt       TIMESTAMPTZ,
 
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
@@ -102,10 +102,10 @@ func (self storePg) createUser(userId string, createdAt time.Time, email, hashed
 	return err
 }
 
-func (self storePg) setUserConfirmationKeyAt(userId string, confirmationKeyAt time.Time) error {
+func (self storePg) setUserConfirmedAt(userId string, confirmedAt time.Time) error {
 	update := `
 		UPDATE auth.user
-		SET confirmationKeyAt = $1
+		SET confirmedAt = $1
 		WHERE id = $2;
 	`
 
@@ -114,7 +114,7 @@ func (self storePg) setUserConfirmationKeyAt(userId string, confirmationKeyAt ti
 		return err
 	}
 
-	_, err = stmt.Exec(confirmationKeyAt, userId)
+	_, err = stmt.Exec(confirmedAt, userId)
 	return err
 }
 
@@ -180,12 +180,12 @@ func (self storePg) getUser(userId string) (user user, err error) {
 	user.id = userId
 
 	query := `
-		SELECT createdAt, email, hashedPass, lang, confirmationKey, confirmationKeyAt, resetKey, resetKeyAt
+		SELECT createdAt, email, hashedPass, lang, confirmationKey, confirmedAt, resetKey, resetKeyAt
 		FROM auth.user
 		WHERE id = $1;
 	`
 
-	var scanConfirmationKeyAt pq.NullTime
+	var scanconfirmedAt pq.NullTime
 	var scanResetKey sql.NullString
 	var scanResetKeyAt pq.NullTime
 
@@ -195,13 +195,13 @@ func (self storePg) getUser(userId string) (user user, err error) {
 		&user.hashedPass,
 		&user.lang,
 		&user.confirmationKey,
-		&scanConfirmationKeyAt,
+		&scanconfirmedAt,
 		&scanResetKey,
 		&scanResetKeyAt,
 	)
 
-	if scanConfirmationKeyAt.Valid {
-		user.confirmationKeyAt = scanConfirmationKeyAt.Time
+	if scanconfirmedAt.Valid {
+		user.confirmedAt = scanconfirmedAt.Time
 	}
 	if scanResetKey.Valid {
 		user.resetKey = scanResetKey.String

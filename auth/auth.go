@@ -101,7 +101,7 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 		return errors.New("The confirmation key is not valid.")
 	}
 
-	return self.store.setUserConfirmationKeyAt(userId, time.Now())
+	return self.store.setUserConfirmedAt(userId, time.Now())
 }
 
 func (self authImpl) Signin(email, password string) (sessionToken string, err error) {
@@ -115,7 +115,7 @@ func (self authImpl) Signin(email, password string) (sessionToken string, err er
 		return
 	}
 
-	if user.confirmationKeyAt.Equal(time.Time{}) {
+	if user.confirmedAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}
@@ -146,7 +146,7 @@ func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err e
 		return
 	}
 
-	if user.confirmationKeyAt.Equal(time.Time{}) {
+	if user.confirmedAt.Equal(time.Time{}) {
 		err = errors.New("The account has not been confirmed.")
 		return
 	}
@@ -269,7 +269,7 @@ func (self authImpl) createUser(email, password, lang string, isConfirmed bool) 
 	}
 
 	if isConfirmed {
-		err = self.store.setUserConfirmationKeyAt(userId, createdAt)
+		err = self.store.setUserConfirmedAt(userId, createdAt)
 	}
 
 	return
