@@ -320,3 +320,26 @@ func TestCreateUser(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, sessionToken)
 }
+
+func TestChangeUserPassword(t *testing.T) {
+	auth, store, _ := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+
+	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+
+	userId, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId)
+
+	_, err = auth.Signin("dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	err = auth.ChangeUserPassword(adminKey, userId, "abc")
+	assert.Nil(t, err)
+
+	_, err = auth.Signin("dario.freire@gmail.com", "123")
+	assert.NotNil(t, err)
+
+	_, err = auth.Signin("dario.freire@gmail.com", "abc")
+	assert.Nil(t, err)
+}

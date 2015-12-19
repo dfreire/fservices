@@ -25,7 +25,7 @@ type Auth interface {
 
 	GetUsers(adminKey string) ([]User, error)
 	CreateUser(adminKey, email, password, lang string) error
-	// ChangeUserPassword(adminKey, userId, newPassword string) error
+	ChangeUserPassword(adminKey, userId, newPassword string) error
 	// ChangeUserEmail(adminKey, userId, newEmail string) error
 	// RemoveUser(adminKey, userId string) error
 
@@ -269,6 +269,19 @@ func (self authImpl) CreateUser(adminKey, email, password, lang string) error {
 
 	_, err := self.createUser(email, password, lang, true)
 	return err
+}
+
+func (self authImpl) ChangeUserPassword(adminKey, userId, newPassword string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	hashedPass, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	return self.store.setUserHashedPass(userId, string(hashedPass))
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
