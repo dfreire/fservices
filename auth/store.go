@@ -28,9 +28,9 @@ type User struct {
 }
 
 type session struct {
-	id        string
-	userId    string
-	createdAt time.Time
+	id     string
+	userId string
+	idleAt time.Time
 }
 
 type store interface {
@@ -46,12 +46,12 @@ type store interface {
 	getUser(userId string) (user user, err error)
 	getAllUsers() (users []User, err error)
 
-	createSession(sessionId, userId string, createdAt time.Time) error
+	createSession(sessionId, userId string, idleAt time.Time) error
 	removeSession(sessionId string) error
 	getSession(sessionId string) (session session, err error)
 
 	removeUnconfirmedUsersCreatedBefore(date time.Time) error
-	removeSessionsCreatedBefore(date time.Time) error
+	removeSessionsIdleBefore(date time.Time) error
 	// removeResetKeysIssuedBefore(date time.Time) error
 }
 
@@ -88,7 +88,7 @@ func (self storePg) createSchema() error {
 		CREATE TABLE auth.session (
 			id         CHAR(36) NOT NULL,
 			userId     CHAR(36) NOT NULL,
-			createdAt  TIMESTAMPTZ NOT NULL,
+			idleAt     TIMESTAMPTZ NOT NULL,
 
 			CONSTRAINT pk_auth_session PRIMARY KEY (id),
 			CONSTRAINT fk_auth_session_userId FOREIGN KEY (userId) REFERENCES auth.user(id)
@@ -288,10 +288,10 @@ func (self storePg) getAllUsers() (users []User, err error) {
 	return
 }
 
-func (self storePg) createSession(sessionId, userId string, createdAt time.Time) error {
+func (self storePg) createSession(sessionId, userId string, idleAt time.Time) error {
 	insert := `
 		INSERT INTO auth.session
-		(id, userId, createdAt)
+		(id, userId, idleAt)
 		VALUES
 		($1, $2, $3);
 	`
@@ -301,7 +301,7 @@ func (self storePg) createSession(sessionId, userId string, createdAt time.Time)
 		return err
 	}
 
-	_, err = stmt.Exec(sessionId, userId, createdAt)
+	_, err = stmt.Exec(sessionId, userId, idleAt)
 	return err
 }
 
@@ -323,11 +323,11 @@ func (self storePg) removeSession(sessionId string) error {
 func (self storePg) getSession(sessionId string) (session session, err error) {
 	session.id = sessionId
 	query := `
-		SELECT userId, createdAt
+		SELECT userId, idleAt
 		FROM auth.session
 		WHERE id = $1;
 	`
-	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.createdAt)
+	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.idleAt)
 	return
 }
 
@@ -341,8 +341,8 @@ func (self storePg) removeUnconfirmedUsersCreatedBefore(date time.Time) error {
 	return err
 }
 
-func (self storePg) removeSessionsCreatedBefore(date time.Time) error {
-	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE createdAt < $1;")
+func (self storePg) removeSessionsIdleBefore(date time.Time) error {
+	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE idleAt < $1;")
 	if err != nil {
 		return err
 	}

@@ -330,7 +330,7 @@ func (self authImpl) RemoveIdleSessions(adminKey string) error {
 	}
 
 	date := time.Now().Add(-1 * maxIdleSessionAge)
-	return self.store.removeSessionsCreatedBefore(date)
+	return self.store.removeSessionsIdleBefore(date)
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {

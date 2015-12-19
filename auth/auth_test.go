@@ -120,8 +120,8 @@ func TestSignin(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, userId, session.userId)
-	assert.True(t, session.createdAt.After(t0))
-	assert.True(t, session.createdAt.Before(t1))
+	assert.True(t, session.idleAt.After(t0))
+	assert.True(t, session.idleAt.Before(t1))
 }
 
 func TestForgotPassword(t *testing.T) {
