@@ -56,7 +56,7 @@ func TestSignup(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, confirmationToken)
 
-	email, lang, confirmationKey, err := auth.(authImpl).parseConfirmationToken(confirmationToken)
+	email, lang, confirmationKey, err := parseConfirmationToken(cfg.JwtKey, confirmationToken)
 	assert.Nil(t, err)
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
@@ -126,7 +126,7 @@ func TestSignin(t *testing.T) {
 
 	t1 := time.Now()
 
-	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
 	assert.Nil(t, err)
 	session, err := store.getSession(sessionId)
 	assert.Nil(t, err)
@@ -155,7 +155,7 @@ func TestForgotPassword(t *testing.T) {
 
 	t1 := time.Now()
 
-	email, lang, resetKey, err := auth.(authImpl).parseResetToken(resetToken)
+	email, lang, resetKey, err := parseResetToken(cfg.JwtKey, resetToken)
 	assert.Nil(t, err)
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
@@ -217,7 +217,7 @@ func TestSignout(t *testing.T) {
 	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId)
@@ -387,7 +387,7 @@ func TestRemoveUser(t *testing.T) {
 	sessionToken1, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	sessionId1, err := auth.(authImpl).parseSessionToken(sessionToken1)
+	sessionId1, err := parseSessionToken(cfg.JwtKey, sessionToken1)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId1)
@@ -396,7 +396,7 @@ func TestRemoveUser(t *testing.T) {
 	sessionToken2, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	sessionId2, err := auth.(authImpl).parseSessionToken(sessionToken2)
+	sessionId2, err := parseSessionToken(cfg.JwtKey, sessionToken2)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId2)
@@ -460,7 +460,7 @@ func TestRemoveIdleSessions(t *testing.T) {
 	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId)

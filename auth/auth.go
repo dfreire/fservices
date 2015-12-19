@@ -6,7 +6,6 @@ import (
 
 	"github.com/dfreire/fservices/mailer"
 	"github.com/dfreire/fservices/util"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/satori/go.uuid"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -83,7 +82,7 @@ func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationTok
 }
 
 func (self authImpl) ConfirmSignup(confirmationToken string) error {
-	email, _, tokenConfirmationKey, err := self.parseConfirmationToken(confirmationToken)
+	email, _, tokenConfirmationKey, err := parseConfirmationToken(self.cfg.JwtKey, confirmationToken)
 	if err != nil {
 		return err
 	}
@@ -132,7 +131,7 @@ func (self authImpl) Signin(email, password string) (sessionToken string, err er
 		return
 	}
 
-	sessionToken, err = self.createSessionToken(sessionId)
+	sessionToken, err = createSessionToken(self.cfg.JwtKey, sessionId)
 	return
 }
 
@@ -163,7 +162,7 @@ func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err e
 }
 
 func (self authImpl) ResetPassword(resetToken, newPassword string) error {
-	email, _, tokenResetKey, err := self.parseResetToken(resetToken)
+	email, _, tokenResetKey, err := parseResetToken(self.cfg.JwtKey, resetToken)
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 }
 
 func (self authImpl) Signout(sessionToken string) error {
-	sessionId, err := self.parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
 	if err != nil {
 		return err
 	}
@@ -209,7 +208,7 @@ func (self authImpl) Signout(sessionToken string) error {
 }
 
 func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword string) error {
-	sessionId, err := self.parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
 	if err != nil {
 		return err
 	}
@@ -237,7 +236,7 @@ func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword strin
 }
 
 func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error {
-	sessionId, err := self.parseSessionToken(sessionToken)
+	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
 	if err != nil {
 		return err
 	}
@@ -356,7 +355,7 @@ func (self authImpl) createUser(email, password, lang string, isConfirmed bool) 
 }
 
 func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) (confirmationToken string, err error) {
-	confirmationToken, err = self.createConfirmationToken(email, lang, confirmationKey)
+	confirmationToken, err = createConfirmationToken(self.cfg.JwtKey, email, lang, confirmationKey)
 	if err != nil {
 		return
 	}
@@ -378,7 +377,7 @@ func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) 
 }
 
 func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetToken string, err error) {
-	resetToken, err = self.createResetToken(email, lang, resetKey)
+	resetToken, err = createResetToken(self.cfg.JwtKey, email, lang, resetKey)
 	if err != nil {
 		return
 	}
@@ -397,75 +396,4 @@ func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetT
 	}
 
 	return resetToken, self.mailer.Send(mail)
-}
-
-func (self authImpl) createConfirmationToken(email, lang, confirmationKey string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["email"] = email
-	token.Claims["lang"] = lang
-	token.Claims["confirmationKey"] = confirmationKey
-	return token.SignedString([]byte(self.cfg.JwtKey))
-}
-
-func (self authImpl) parseConfirmationToken(confirmationToken string) (email, lang, confirmationKey string, err error) {
-	token, err := jwt.Parse(confirmationToken, func(token *jwt.Token) (interface{}, error) {
-		return []byte(self.cfg.JwtKey), nil
-	})
-	if err != nil {
-		return
-	}
-	if !token.Valid {
-		return
-	}
-
-	email = token.Claims["email"].(string)
-	lang = token.Claims["lang"].(string)
-	confirmationKey = token.Claims["confirmationKey"].(string)
-	return
-}
-
-func (self authImpl) createSessionToken(sessionId string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["sessionId"] = sessionId
-	return token.SignedString([]byte(self.cfg.JwtKey))
-}
-
-func (self authImpl) parseSessionToken(sessionToken string) (sessionId string, err error) {
-	token, err := jwt.Parse(sessionToken, func(token *jwt.Token) (interface{}, error) {
-		return []byte(self.cfg.JwtKey), nil
-	})
-	if err != nil {
-		return
-	}
-	if !token.Valid {
-		return
-	}
-
-	sessionId = token.Claims["sessionId"].(string)
-	return
-}
-
-func (self authImpl) createResetToken(email, lang, resetKey string) (string, error) {
-	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["email"] = email
-	token.Claims["lang"] = lang
-	token.Claims["resetKey"] = resetKey
-	return token.SignedString([]byte(self.cfg.JwtKey))
-}
-
-func (self authImpl) parseResetToken(resetToken string) (email, lang, resetKey string, err error) {
-	token, err := jwt.Parse(resetToken, func(token *jwt.Token) (interface{}, error) {
-		return []byte(self.cfg.JwtKey), nil
-	})
-	if err != nil {
-		return
-	}
-	if !token.Valid {
-		return
-	}
-
-	email = token.Claims["email"].(string)
-	lang = token.Claims["lang"].(string)
-	resetKey = token.Claims["resetKey"].(string)
-	return
 }
