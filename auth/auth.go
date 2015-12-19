@@ -30,7 +30,7 @@ type Auth interface {
 	RemoveUser(adminKey, userId string) error
 
 	RemoveUnconfirmedUsers(adminKey string) error
-	// RemoveIdleSessions(adminKey string) error
+	RemoveIdleSessions(adminKey string) error
 	// RemoveExpiredResetKeys(adminKey string) error
 }
 
@@ -317,6 +317,20 @@ func (self authImpl) RemoveUnconfirmedUsers(adminKey string) error {
 
 	date := time.Now().Add(-1 * maxUnconfirmedUsersAge)
 	return self.store.removeUnconfirmedUsersCreatedBefore(date)
+}
+
+func (self authImpl) RemoveIdleSessions(adminKey string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	maxIdleSessionAge, err := time.ParseDuration(self.cfg.MaxIdleSessionAge)
+	if err != nil {
+		return err
+	}
+
+	date := time.Now().Add(-1 * maxIdleSessionAge)
+	return self.store.removeSessionsCreatedBefore(date)
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {

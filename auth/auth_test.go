@@ -437,3 +437,30 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 	_, err = store.getUser(userId)
 	assert.NotNil(t, err)
 }
+
+func TestRemoveIdleSessions(t *testing.T) {
+	auth, store, _ := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+
+	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	userId, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId)
+
+	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	sessionId, err := auth.(authImpl).parseSessionToken(sessionToken)
+	assert.Nil(t, err)
+
+	_, err = store.getSession(sessionId)
+	assert.Nil(t, err)
+
+	time.Sleep(2 * time.Nanosecond)
+
+	err = auth.RemoveIdleSessions(adminKey)
+	assert.Nil(t, err)
+
+	_, err = store.getSession(sessionId)
+	assert.NotNil(t, err)
+}

@@ -51,7 +51,7 @@ type store interface {
 	getSession(sessionId string) (session session, err error)
 
 	removeUnconfirmedUsersCreatedBefore(date time.Time) error
-	// removeSessionsCreatedBefore(date time.Duration) error
+	removeSessionsCreatedBefore(date time.Time) error
 	// removeResetKeysIssuedBefore(date time.Time) error
 }
 
@@ -333,6 +333,16 @@ func (self storePg) getSession(sessionId string) (session session, err error) {
 
 func (self storePg) removeUnconfirmedUsersCreatedBefore(date time.Time) error {
 	stmt, err := self.db.Prepare("DELETE FROM auth.user WHERE createdAt < $1;")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(date)
+	return err
+}
+
+func (self storePg) removeSessionsCreatedBefore(date time.Time) error {
+	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE createdAt < $1;")
 	if err != nil {
 		return err
 	}
