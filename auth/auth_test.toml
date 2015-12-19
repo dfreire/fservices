@@ -12,7 +12,7 @@ Subject = "Signup Confirmation"
 Body = """
 <p>Thank you for signing up!</p>
 <p>Please confirm your account by opening the link:&nbsp;
-<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRM ACCOUNT</a>
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationTokenStr}}'>CONFIRM ACCOUNT</a>
 </p>
 """
 
@@ -21,7 +21,7 @@ Subject = "Confirmação de Registo"
 Body = """
 <p>Obrigado pelo seu registo!</p>
 <p>Por favor confirme a sua conta abrindo o link:&nbsp;
-<a href='http://example.com/confirm?l=en&ct={{.ConfirmationToken}}'>CONFIRMAR REGISTO</a>
+<a href='http://example.com/confirm?l=en&ct={{.ConfirmationTokenStr}}'>CONFIRMAR REGISTO</a>
 </p>
 """
 

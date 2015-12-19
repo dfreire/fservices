@@ -8,11 +8,11 @@ type privateConfirmationToken struct {
 	key   string
 }
 
-func createConfirmationToken(jwtKey string, confirmationToken privateConfirmationToken) (string, error) {
+func (self privateConfirmationToken) toString(jwtKey string) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["email"] = confirmationToken.email
-	token.Claims["lang"] = confirmationToken.lang
-	token.Claims["key"] = confirmationToken.key
+	token.Claims["email"] = self.email
+	token.Claims["lang"] = self.lang
+	token.Claims["key"] = self.key
 	return token.SignedString([]byte(jwtKey))
 }
 
@@ -27,9 +27,11 @@ func parseConfirmationToken(jwtKey, confirmationTokenStr string) (confirmationTo
 		return
 	}
 
-	confirmationToken.email = token.Claims["email"].(string)
-	confirmationToken.lang = token.Claims["lang"].(string)
-	confirmationToken.key = token.Claims["key"].(string)
+	confirmationToken = privateConfirmationToken{
+		token.Claims["email"].(string),
+		token.Claims["lang"].(string),
+		token.Claims["key"].(string),
+	}
 	return
 }
 

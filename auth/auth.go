@@ -11,9 +11,9 @@ import (
 )
 
 type Auth interface {
-	Signup(email, password, lang string) (confirmationToken string, err error)
-	ResendConfirmationMail(email, lang string) (confirmationToken string, err error)
-	ConfirmSignup(confirmationToken string) error
+	Signup(email, password, lang string) (confirmationTokenStr string, err error)
+	ResendConfirmationMail(email, lang string) (confirmationTokenStr string, err error)
+	ConfirmSignup(confirmationTokenStr string) error
 	Signin(email, password string) (sessionToken string, err error)
 	ForgotPasword(email, lang string) (resetToken string, err error)
 	ResetPassword(resetToken, newPassword string) error
@@ -58,7 +58,7 @@ func NewAuth(cfg AuthConfig, store store, mailer mailer.Mailer) authImpl {
 	return authImpl{cfg, store, mailer}
 }
 
-func (self authImpl) Signup(email, password, lang string) (confirmationToken string, err error) {
+func (self authImpl) Signup(email, password, lang string) (confirmationTokenStr string, err error) {
 	confirmationKey, err := self.createUser(email, password, lang, false)
 	if err != nil {
 		return
@@ -67,7 +67,7 @@ func (self authImpl) Signup(email, password, lang string) (confirmationToken str
 	return self.sendConfirmationEmail(email, lang, confirmationKey)
 }
 
-func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationToken string, err error) {
+func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationTokenStr string, err error) {
 	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return
@@ -354,13 +354,14 @@ func (self authImpl) createUser(email, password, lang string, isConfirmed bool) 
 	return
 }
 
-func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) (confirmationToken string, err error) {
-	confirmationToken, err = createConfirmationToken(self.cfg.JwtKey, privateConfirmationToken{email, lang, confirmationKey})
+func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) (confirmationTokenStr string, err error) {
+	confirmationToken := privateConfirmationToken{email, lang, confirmationKey}
+	confirmationTokenStr, err = confirmationToken.toString(self.cfg.JwtKey)
 	if err != nil {
 		return
 	}
 
-	templateValues := struct{ ConfirmationToken string }{confirmationToken}
+	templateValues := struct{ ConfirmationTokenStr string }{confirmationTokenStr}
 	body, err := util.RenderTemplate(self.cfg.ConfirmationEmail[lang].Body, templateValues)
 	if err != nil {
 		return
@@ -373,7 +374,7 @@ func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) 
 		Body:    body,
 	}
 
-	return confirmationToken, self.mailer.Send(mail)
+	return confirmationTokenStr, self.mailer.Send(mail)
 }
 
 func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetToken string, err error) {
