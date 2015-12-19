@@ -16,7 +16,7 @@ type Auth interface {
 	ConfirmSignup(confirmationTokenStr string) error
 	Signin(email, password string) (sessionToken string, err error)
 	ForgotPasword(email, lang string) (resetTokenStr string, err error)
-	ResetPassword(resetToken, newPassword string) error
+	ResetPassword(resetTokenStr, newPassword string) error
 
 	Signout(sessionToken string) error
 	ChangePassword(sessionToken, oldPassword, newPassword string) error
@@ -27,6 +27,7 @@ type Auth interface {
 	ChangeUserPassword(adminKey, userId, newPassword string) error
 	ChangeUserEmail(adminKey, userId, newEmail string) error
 	RemoveUser(adminKey, userId string) error
+	//RemoveUsers(adminKey, userIds []string) error
 
 	RemoveUnconfirmedUsers(adminKey string) error
 	RemoveIdleSessions(adminKey string) error
