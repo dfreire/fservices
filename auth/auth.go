@@ -27,7 +27,7 @@ type Auth interface {
 	CreateUser(adminKey, email, password, lang string) error
 	// ChangeUserPassword(adminKey, userId, newPassword string) error
 	// ChangeUserEmail(adminKey, userId, newEmail string) error
-	// RemoveUserById(adminKey, userId string) error
+	// RemoveUser(adminKey, userId string) error
 
 	// RemoveExpiredConfirmationKeys(maxAge time.Duration) error
 	// RemoveExpiredResetKeys(maxAge time.Duration) error

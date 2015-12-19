@@ -296,10 +296,11 @@ func TestGetUsers(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	auth, store, _ := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
 	t0 := time.Now()
 
-	assert.Nil(t, auth.CreateUser("ba5a5c16-840a-4a01-8817-3799d0492551", "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
 
 	t1 := time.Now()
 
@@ -308,7 +309,6 @@ func TestCreateUser(t *testing.T) {
 
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
-
 	assert.NotEmpty(t, user.id)
 	assert.True(t, user.createdAt.After(t0))
 	assert.True(t, user.createdAt.Before(t1))
