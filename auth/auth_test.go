@@ -35,7 +35,6 @@ func createAuthService() (Auth, store, *mailermock.MailerMock) {
 
 func TestSignup(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
-
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
 	confirmationToken, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
@@ -403,5 +402,38 @@ func TestRemoveUser(t *testing.T) {
 	assert.NotNil(t, err)
 
 	_, err = store.getSession(sessionId2)
+	assert.NotNil(t, err)
+}
+
+func TestRemoveUnconfirmedUsers(t *testing.T) {
+	auth, store, mailerMock := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
+
+	t0 := time.Now()
+
+	_, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
+	assert.Nil(t, err)
+
+	t1 := time.Now()
+
+	userId, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+
+	user, err := store.getUser(userId)
+	assert.Nil(t, err)
+	assert.NotEmpty(t, user.id)
+	assert.True(t, user.createdAt.After(t0))
+	assert.True(t, user.createdAt.Before(t1))
+	assert.Equal(t, "dario.freire@gmail.com", user.email)
+	assert.Equal(t, "en_US", user.lang)
+	assert.True(t, user.confirmedAt.Equal(time.Time{}))
+
+	time.Sleep(2 * time.Nanosecond)
+
+	err = auth.RemoveUnconfirmedUsers(adminKey)
+	assert.Nil(t, err)
+
+	_, err = store.getUser(userId)
 	assert.NotNil(t, err)
 }

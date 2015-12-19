@@ -29,20 +29,20 @@ type Auth interface {
 	ChangeUserEmail(adminKey, userId, newEmail string) error
 	RemoveUser(adminKey, userId string) error
 
-	// RemoveExpiredConfirmationKeys(maxAge time.Duration) error
-	// RemoveExpiredResetKeys(maxAge time.Duration) error
-	// RemoveExpiredSessions(maxAge time.Duration) error
+	RemoveUnconfirmedUsers(adminKey string) error
+	// RemoveIdleSessions(adminKey string) error
+	// RemoveExpiredResetKeys(adminKey string) error
 }
 
 type AuthConfig struct {
-	AdminKey                     string
-	JwtKey                       string
-	MaxConfirmationKeyAgeInHours int
-	MaxIdleSessionAgeInHours     int
-	MaxResetKeyAgeInMinutes      int
-	FromEmail                    string
-	ConfirmationEmail            AuthMailConfig
-	ResetPasswordEmail           AuthMailConfig
+	AdminKey               string
+	JwtKey                 string
+	MaxUnconfirmedUsersAge string
+	MaxIdleSessionAge      string
+	MaxResetKeyAge         string
+	FromEmail              string
+	ConfirmationEmail      AuthMailConfig
+	ResetPasswordEmail     AuthMailConfig
 }
 type AuthMailConfig map[string]struct {
 	Subject string
@@ -182,7 +182,12 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return errors.New("The reset key is not valid.")
 	}
 
-	if time.Now().After(user.resetKeyAt.Add(time.Duration(self.cfg.MaxResetKeyAgeInMinutes) * time.Minute)) {
+	maxResetKeyAge, err := time.ParseDuration(self.cfg.MaxResetKeyAge)
+	if err != nil {
+		return err
+	}
+
+	if time.Now().After(user.resetKeyAt.Add(maxResetKeyAge)) {
 		return errors.New("The reset key has expired.")
 	}
 
@@ -298,6 +303,20 @@ func (self authImpl) RemoveUser(adminKey, userId string) error {
 	}
 
 	return self.store.removeUser(userId)
+}
+
+func (self authImpl) RemoveUnconfirmedUsers(adminKey string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	maxUnconfirmedUsersAge, err := time.ParseDuration(self.cfg.MaxUnconfirmedUsersAge)
+	if err != nil {
+		return err
+	}
+
+	date := time.Now().Add(-1 * maxUnconfirmedUsersAge)
+	return self.store.removeUnconfirmedUsersCreatedBefore(date)
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
