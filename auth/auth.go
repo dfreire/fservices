@@ -15,7 +15,7 @@ type Auth interface {
 	ResendConfirmationMail(email, lang string) (confirmationTokenStr string, err error)
 	ConfirmSignup(confirmationTokenStr string) error
 	Signin(email, password string) (sessionToken string, err error)
-	ForgotPasword(email, lang string) (resetToken string, err error)
+	ForgotPasword(email, lang string) (resetTokenStr string, err error)
 	ResetPassword(resetToken, newPassword string) error
 
 	Signout(sessionToken string) error
@@ -161,13 +161,13 @@ func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err e
 	return self.sendResetPaswordEmail(email, lang, resetKey)
 }
 
-func (self authImpl) ResetPassword(resetToken, newPassword string) error {
-	email, _, tokenResetKey, err := parseResetToken(self.cfg.JwtKey, resetToken)
+func (self authImpl) ResetPassword(resetTokenStr, newPassword string) error {
+	resetToken, err := parseResetToken(self.cfg.JwtKey, resetTokenStr)
 	if err != nil {
 		return err
 	}
 
-	userId, err := self.store.getUserId(email)
+	userId, err := self.store.getUserId(resetToken.email)
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (self authImpl) ResetPassword(resetToken, newPassword string) error {
 		return err
 	}
 
-	if tokenResetKey != user.resetKey {
+	if resetToken.key != user.resetKey {
 		return errors.New("The reset key is not valid.")
 	}
 
@@ -377,13 +377,13 @@ func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) 
 	return confirmationTokenStr, self.mailer.Send(mail)
 }
 
-func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetToken string, err error) {
-	resetToken, err = createResetToken(self.cfg.JwtKey, email, lang, resetKey)
+func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetTokenStr string, err error) {
+	resetTokenStr, err = privateResetToken{email, lang, resetKey}.toString(self.cfg.JwtKey)
 	if err != nil {
 		return
 	}
 
-	templateValues := struct{ ResetToken string }{resetToken}
+	templateValues := struct{ ResetTokenStr string }{resetTokenStr}
 	body, err := util.RenderTemplate(self.cfg.ResetPasswordEmail[lang].Body, templateValues)
 	if err != nil {
 		return
@@ -396,5 +396,5 @@ func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetT
 		Body:    body,
 	}
 
-	return resetToken, self.mailer.Send(mail)
+	return resetTokenStr, self.mailer.Send(mail)
 }

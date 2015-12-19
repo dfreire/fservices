@@ -30,7 +30,7 @@ Subject = "Password Reset"
 Body = """
 <p>We have received a request to reset your password.</p>
 <p>You can set a new password by opening the link:&nbsp;
-<a href='http://example.com/reset-password?l=en&ct={{.ResetToken}}'>RESET PASSWORD</a>
+<a href='http://example.com/reset-password?l=en&ct={{.ResetTokenStr}}'>RESET PASSWORD</a>
 </p>
 <p>If you don't want to change your password you can ignore this mail.</p>
 """
@@ -40,7 +40,7 @@ Subject = "Alterar Password"
 Body = """
 <p>Recebemos um pedido para alterar a sua password.</p>
 <p>Poderá escolher uma nova password abrindo o link:&nbsp;
-<a href='http://example.com/reset-password?l=en&ct={{.ResetToken}}'>ALTERAR PASSWORD</a>
+<a href='http://example.com/reset-password?l=en&ct={{.ResetTokenStr}}'>ALTERAR PASSWORD</a>
 </p>
 <p>Se não quiser alterar a sua password, pode ignorar este email.</p>
 """

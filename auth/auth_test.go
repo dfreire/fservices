@@ -150,12 +150,12 @@ func TestForgotPassword(t *testing.T) {
 
 	t0 := time.Now()
 
-	resetToken, err := auth.ForgotPasword("dario.freire@gmail.com", "en_US")
+	resetTokenStr, err := auth.ForgotPasword("dario.freire@gmail.com", "en_US")
 	assert.Nil(t, err)
 
 	t1 := time.Now()
 
-	email, lang, resetKey, err := parseResetToken(cfg.JwtKey, resetToken)
+	resetToken, err := parseResetToken(cfg.JwtKey, resetTokenStr)
 	assert.Nil(t, err)
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
@@ -163,10 +163,10 @@ func TestForgotPassword(t *testing.T) {
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "dario.freire@gmail.com", email)
-	assert.Equal(t, "en_US", lang)
-	assert.Equal(t, resetKey, user.resetKey)
-	assert.NotEmpty(t, resetKey)
+	assert.Equal(t, "dario.freire@gmail.com", resetToken.email)
+	assert.Equal(t, "en_US", resetToken.lang)
+	assert.Equal(t, user.resetKey, resetToken.key)
+	assert.NotEmpty(t, resetToken.key)
 	assert.True(t, user.resetKeyAt.After(t0))
 	assert.True(t, user.resetKeyAt.Before(t1))
 
