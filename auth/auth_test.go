@@ -120,23 +120,21 @@ func TestSignin(t *testing.T) {
 
 	t0 := time.Now()
 
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	sessionTokenStr, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
-	assert.NotEmpty(t, sessionToken)
+	assert.NotEmpty(t, sessionTokenStr)
 
 	t1 := time.Now()
 
-	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
-	assert.Nil(t, err)
-	session, err := store.getSession(sessionId)
+	sessionToken, err := parseSessionToken(cfg.JwtKey, sessionTokenStr)
 	assert.Nil(t, err)
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 
-	assert.Equal(t, userId, session.userId)
-	assert.True(t, session.activityAt.After(t0))
-	assert.True(t, session.activityAt.Before(t1))
+	assert.Equal(t, userId, sessionToken.userId)
+	assert.True(t, sessionToken.createdAt.Unix() >= t0.Unix())
+	assert.True(t, sessionToken.createdAt.Unix() <= t1.Unix())
 }
 
 func TestForgotPassword(t *testing.T) {
@@ -205,30 +203,6 @@ func TestResetPassword(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestSignout(t *testing.T) {
-	auth, store, mailerMock := createAuthService()
-	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
-
-	confirmationToken, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
-	assert.Nil(t, err)
-
-	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
-
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
-	assert.Nil(t, err)
-
-	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId)
-	assert.Nil(t, err)
-
-	assert.Nil(t, auth.Signout(sessionToken))
-
-	_, err = store.getSession(sessionId)
-	assert.NotNil(t, err)
-}
-
 func TestChangePassword(t *testing.T) {
 	auth, _, mailerMock := createAuthService()
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
@@ -238,10 +212,10 @@ func TestChangePassword(t *testing.T) {
 
 	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
 
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	sessionTokenStr, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	err = auth.ChangePassword(sessionToken, "123", "abc")
+	err = auth.ChangePassword(sessionTokenStr, "123", "abc")
 	assert.Nil(t, err)
 
 	_, err = auth.Signin("dario.freire@gmail.com", "123")
@@ -260,10 +234,10 @@ func TestChangeEmail(t *testing.T) {
 
 	assert.Nil(t, auth.ConfirmSignup(confirmationToken))
 
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	sessionTokenStr, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	err = auth.ChangeEmail(sessionToken, "123", "dario.freire+changed@gmail.com")
+	err = auth.ChangeEmail(sessionTokenStr, "123", "dario.freire+changed@gmail.com")
 	assert.Nil(t, err)
 
 	_, err = store.getUserId("dario.freire@gmail.com")
@@ -329,9 +303,9 @@ func TestCreateUser(t *testing.T) {
 	assert.Equal(t, "en_US", user.lang)
 	assert.True(t, user.confirmedAt.Equal(user.createdAt))
 
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
+	sessionTokenStr, err := auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
-	assert.NotEmpty(t, sessionToken)
+	assert.NotEmpty(t, sessionTokenStr)
 }
 
 func TestChangeUserPassword(t *testing.T) {
@@ -384,35 +358,15 @@ func TestRemoveUser(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, userId)
 
-	sessionToken1, err := auth.Signin("dario.freire@gmail.com", "123")
+	_, err = auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
-
-	sessionId1, err := parseSessionToken(cfg.JwtKey, sessionToken1)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId1)
-	assert.Nil(t, err)
-
-	sessionToken2, err := auth.Signin("dario.freire@gmail.com", "123")
-	assert.Nil(t, err)
-
-	sessionId2, err := parseSessionToken(cfg.JwtKey, sessionToken2)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId2)
-	assert.Nil(t, err)
-
-	assert.NotEqual(t, sessionId1, sessionId2)
 
 	assert.Nil(t, auth.RemoveUser(cfg.AdminKey, userId))
 
+	_, err = auth.Signin("dario.freire@gmail.com", "123")
+	assert.NotNil(t, err)
+
 	_, err = store.getUser(userId)
-	assert.NotNil(t, err)
-
-	_, err = store.getSession(sessionId1)
-	assert.NotNil(t, err)
-
-	_, err = store.getSession(sessionId2)
 	assert.NotNil(t, err)
 }
 
@@ -446,31 +400,5 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 	assert.Nil(t, err)
 
 	_, err = store.getUser(userId)
-	assert.NotNil(t, err)
-}
-
-func TestRemoveIdleSessions(t *testing.T) {
-	auth, store, _ := createAuthService()
-
-	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
-	userId, err := store.getUserId("dario.freire@gmail.com")
-	assert.Nil(t, err)
-	assert.NotEmpty(t, userId)
-
-	sessionToken, err := auth.Signin("dario.freire@gmail.com", "123")
-	assert.Nil(t, err)
-
-	sessionId, err := parseSessionToken(cfg.JwtKey, sessionToken)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId)
-	assert.Nil(t, err)
-
-	time.Sleep(2 * time.Nanosecond)
-
-	err = auth.RemoveIdleSessions(cfg.AdminKey)
-	assert.Nil(t, err)
-
-	_, err = store.getSession(sessionId)
 	assert.NotNil(t, err)
 }

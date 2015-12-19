@@ -27,10 +27,8 @@ func parseConfirmationToken(jwtKey, confirmationTokenStr string) (confirmationTo
 		return
 	}
 
-	confirmationToken = privateConfirmationToken{
-		token.Claims["email"].(string),
-		token.Claims["lang"].(string),
-		token.Claims["key"].(string),
-	}
+	confirmationToken.email = token.Claims["email"].(string)
+	confirmationToken.lang = token.Claims["lang"].(string)
+	confirmationToken.key = token.Claims["key"].(string)
 	return
 }

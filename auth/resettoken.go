@@ -27,10 +27,8 @@ func parseResetToken(jwtKey, resetTokenStr string) (resetToken privateResetToken
 		return
 	}
 
-	resetToken = privateResetToken{
-		token.Claims["email"].(string),
-		token.Claims["lang"].(string),
-		token.Claims["key"].(string),
-	}
+	resetToken.email = token.Claims["email"].(string)
+	resetToken.lang = token.Claims["lang"].(string)
+	resetToken.key = token.Claims["key"].(string)
 	return
 }

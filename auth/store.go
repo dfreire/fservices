@@ -27,12 +27,6 @@ type User struct {
 	ConfirmedAt time.Time
 }
 
-type session struct {
-	id         string
-	userId     string
-	activityAt time.Time
-}
-
 type store interface {
 	createSchema() error
 
@@ -46,12 +40,7 @@ type store interface {
 	getUser(userId string) (user user, err error)
 	getAllUsers() (users []User, err error)
 
-	createSession(sessionId, userId string, activityAt time.Time) error
-	removeSession(sessionId string) error
-	getSession(sessionId string) (session session, err error)
-
 	removeUnconfirmedUsersCreatedBefore(date time.Time) error
-	removeSessionsIdleBefore(date time.Time) error
 	// removeResetKeysIssuedBefore(date time.Time) error
 }
 
@@ -84,17 +73,6 @@ func (self storePg) createSchema() error {
 		);
 
 		CREATE UNIQUE INDEX idx_auth_user_email ON auth.user (email);
-
-		CREATE TABLE auth.session (
-			id         CHAR(36) NOT NULL,
-			userId     CHAR(36) NOT NULL,
-			activityAt TIMESTAMPTZ NOT NULL,
-
-			CONSTRAINT pk_auth_session PRIMARY KEY (id),
-			CONSTRAINT fk_auth_session_userId FOREIGN KEY (userId) REFERENCES auth.user(id)
-		);
-
-		CREATE INDEX idx_auth_session_userId ON auth.session (userId);
 	`
 
 	_, err := self.db.Exec(schema)
@@ -119,33 +97,13 @@ func (self storePg) createUser(userId string, createdAt time.Time, email, hashed
 }
 
 func (self storePg) removeUser(userId string) error {
-	tx, err := self.db.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	stmtSession, err := tx.Prepare("DELETE FROM auth.session WHERE userId = $1;")
+	stmt, err := self.db.Prepare("DELETE FROM auth.user WHERE id = $1;")
 	if err != nil {
 		return err
 	}
 
-	_, err = stmtSession.Exec(userId)
-	if err != nil {
-		return err
-	}
-
-	stmtUser, err := tx.Prepare("DELETE FROM auth.user WHERE id = $1;")
-	if err != nil {
-		return err
-	}
-
-	_, err = stmtUser.Exec(userId)
-	if err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	_, err = stmt.Exec(userId)
+	return err
 }
 
 func (self storePg) setUserConfirmedAt(userId string, confirmedAt time.Time) error {
@@ -288,61 +246,8 @@ func (self storePg) getAllUsers() (users []User, err error) {
 	return
 }
 
-func (self storePg) createSession(sessionId, userId string, activityAt time.Time) error {
-	insert := `
-		INSERT INTO auth.session
-		(id, userId, activityAt)
-		VALUES
-		($1, $2, $3);
-	`
-
-	stmt, err := self.db.Prepare(insert)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(sessionId, userId, activityAt)
-	return err
-}
-
-func (self storePg) removeSession(sessionId string) error {
-	delete := `
-		DELETE FROM auth.session
-		WHERE id = $1;
-	`
-
-	stmt, err := self.db.Prepare(delete)
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(sessionId)
-	return err
-}
-
-func (self storePg) getSession(sessionId string) (session session, err error) {
-	session.id = sessionId
-	query := `
-		SELECT userId, activityAt
-		FROM auth.session
-		WHERE id = $1;
-	`
-	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.activityAt)
-	return
-}
-
 func (self storePg) removeUnconfirmedUsersCreatedBefore(date time.Time) error {
 	stmt, err := self.db.Prepare("DELETE FROM auth.user WHERE createdAt < $1;")
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(date)
-	return err
-}
-
-func (self storePg) removeSessionsIdleBefore(date time.Time) error {
-	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE activityAt < $1;")
 	if err != nil {
 		return err
 	}

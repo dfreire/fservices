@@ -14,13 +14,12 @@ type Auth interface {
 	Signup(email, password, lang string) (confirmationTokenStr string, err error)
 	ResendConfirmationMail(email, lang string) (confirmationTokenStr string, err error)
 	ConfirmSignup(confirmationTokenStr string) error
-	Signin(email, password string) (sessionToken string, err error)
+	Signin(email, password string) (sessionTokenStr string, err error)
 	ForgotPasword(email, lang string) (resetTokenStr string, err error)
 	ResetPassword(resetTokenStr, newPassword string) error
 
-	Signout(sessionToken string) error
-	ChangePassword(sessionToken, oldPassword, newPassword string) error
-	ChangeEmail(sessionToken, password, newEmail string) error
+	ChangePassword(sessionTokenStr, oldPassword, newPassword string) error
+	ChangeEmail(sessionTokenStr, password, newEmail string) error
 
 	GetUsers(adminKey string) ([]User, error)
 	CreateUser(adminKey, email, password, lang string) error
@@ -30,7 +29,6 @@ type Auth interface {
 	//RemoveUsers(adminKey, userIds []string) error
 
 	RemoveUnconfirmedUsers(adminKey string) error
-	RemoveIdleSessions(adminKey string) error
 	// RemoveExpiredResetKeys(adminKey string) error
 }
 
@@ -38,7 +36,6 @@ type AuthConfig struct {
 	AdminKey               string
 	JwtKey                 string
 	MaxUnconfirmedUsersAge string
-	MaxIdleSessionAge      string
 	MaxResetKeyAge         string
 	FromEmail              string
 	ConfirmationEmail      AuthMailConfig
@@ -105,7 +102,7 @@ func (self authImpl) ConfirmSignup(confirmationTokenStr string) error {
 	return self.store.setUserConfirmedAt(userId, time.Now())
 }
 
-func (self authImpl) Signin(email, password string) (sessionToken string, err error) {
+func (self authImpl) Signin(email, password string) (sessionTokenStr string, err error) {
 	userId, err := self.store.getUserId(email)
 	if err != nil {
 		return
@@ -128,11 +125,7 @@ func (self authImpl) Signin(email, password string) (sessionToken string, err er
 	sessionId := uuid.NewV4().String()
 	sessionCreatedAt := time.Now()
 
-	if err = self.store.createSession(sessionId, userId, sessionCreatedAt); err != nil {
-		return
-	}
-
-	sessionToken, err = createSessionToken(self.cfg.JwtKey, sessionId)
+	sessionTokenStr, err = privateSessionToken{sessionId, userId, sessionCreatedAt}.toString(self.cfg.JwtKey)
 	return
 }
 
@@ -199,27 +192,13 @@ func (self authImpl) ResetPassword(resetTokenStr, newPassword string) error {
 	return self.store.setUserHashedPass(userId, string(hashedPass))
 }
 
-func (self authImpl) Signout(sessionToken string) error {
-	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
+func (self authImpl) ChangePassword(sessionTokenStr, oldPassword, newPassword string) error {
+	sessionToken, err := parseSessionToken(self.cfg.JwtKey, sessionTokenStr)
 	if err != nil {
 		return err
 	}
 
-	return self.store.removeSession(sessionId)
-}
-
-func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword string) error {
-	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
-	if err != nil {
-		return err
-	}
-
-	session, err := self.store.getSession(sessionId)
-	if err != nil {
-		return err
-	}
-
-	user, err := self.store.getUser(session.userId)
+	user, err := self.store.getUser(sessionToken.userId)
 	if err != nil {
 		return err
 	}
@@ -233,21 +212,16 @@ func (self authImpl) ChangePassword(sessionToken, oldPassword, newPassword strin
 		return err
 	}
 
-	return self.store.setUserHashedPass(session.userId, string(hashedPass))
+	return self.store.setUserHashedPass(sessionToken.userId, string(hashedPass))
 }
 
-func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error {
-	sessionId, err := parseSessionToken(self.cfg.JwtKey, sessionToken)
+func (self authImpl) ChangeEmail(sessionTokenStr, password, newEmail string) error {
+	sessionToken, err := parseSessionToken(self.cfg.JwtKey, sessionTokenStr)
 	if err != nil {
 		return err
 	}
 
-	session, err := self.store.getSession(sessionId)
-	if err != nil {
-		return err
-	}
-
-	user, err := self.store.getUser(session.userId)
+	user, err := self.store.getUser(sessionToken.userId)
 	if err != nil {
 		return err
 	}
@@ -256,7 +230,7 @@ func (self authImpl) ChangeEmail(sessionToken, password, newEmail string) error 
 		return err
 	}
 
-	return self.store.setUserEmail(session.userId, newEmail)
+	return self.store.setUserEmail(sessionToken.userId, newEmail)
 }
 
 func (self authImpl) GetUsers(adminKey string) ([]User, error) {
@@ -317,20 +291,6 @@ func (self authImpl) RemoveUnconfirmedUsers(adminKey string) error {
 
 	date := time.Now().Add(-1 * maxUnconfirmedUsersAge)
 	return self.store.removeUnconfirmedUsersCreatedBefore(date)
-}
-
-func (self authImpl) RemoveIdleSessions(adminKey string) error {
-	if adminKey != self.cfg.AdminKey {
-		return errors.New("Unauthorized")
-	}
-
-	maxIdleSessionAge, err := time.ParseDuration(self.cfg.MaxIdleSessionAge)
-	if err != nil {
-		return err
-	}
-
-	date := time.Now().Add(-1 * maxIdleSessionAge)
-	return self.store.removeSessionsIdleBefore(date)
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
