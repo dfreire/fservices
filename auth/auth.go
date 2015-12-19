@@ -147,12 +147,12 @@ func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err e
 
 	resetKey := uuid.NewV4().String()
 
-	err = self.store.setUserResetKey(userId, resetKey, time.Now())
+	err = self.store.setUserResetKey(userId, resetKey)
 	if err != nil {
 		return
 	}
 
-	return self.sendResetPaswordEmail(email, lang, resetKey)
+	return self.sendResetPaswordEmail(privateResetToken{email, lang, resetKey, time.Now()})
 }
 
 func (self authImpl) ResetPassword(resetTokenStr, newPassword string) error {
@@ -180,7 +180,7 @@ func (self authImpl) ResetPassword(resetTokenStr, newPassword string) error {
 		return err
 	}
 
-	if time.Now().After(user.resetKeyAt.Add(maxResetKeyAge)) {
+	if time.Now().After(resetToken.createdAt.Add(maxResetKeyAge)) {
 		return errors.New("The reset key has expired.")
 	}
 
@@ -338,22 +338,22 @@ func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) 
 	return confirmationTokenStr, self.mailer.Send(mail)
 }
 
-func (self authImpl) sendResetPaswordEmail(email, lang, resetKey string) (resetTokenStr string, err error) {
-	resetTokenStr, err = privateResetToken{email, lang, resetKey}.toString(self.cfg.JwtKey)
+func (self authImpl) sendResetPaswordEmail(resetKeyToken privateResetToken) (resetTokenStr string, err error) {
+	resetTokenStr, err = resetKeyToken.toString(self.cfg.JwtKey)
 	if err != nil {
 		return
 	}
 
 	templateValues := struct{ ResetTokenStr string }{resetTokenStr}
-	body, err := util.RenderTemplate(self.cfg.ResetPasswordEmail[lang].Body, templateValues)
+	body, err := util.RenderTemplate(self.cfg.ResetPasswordEmail[resetKeyToken.lang].Body, templateValues)
 	if err != nil {
 		return
 	}
 
 	mail := mailer.Mail{
 		From:    self.cfg.FromEmail,
-		To:      []string{email},
-		Subject: self.cfg.ResetPasswordEmail[lang].Subject,
+		To:      []string{resetKeyToken.email},
+		Subject: self.cfg.ResetPasswordEmail[resetKeyToken.lang].Subject,
 		Body:    body,
 	}
 

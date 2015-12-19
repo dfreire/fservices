@@ -165,8 +165,8 @@ func TestForgotPassword(t *testing.T) {
 	assert.Equal(t, "en_US", resetToken.lang)
 	assert.Equal(t, user.resetKey, resetToken.key)
 	assert.NotEmpty(t, resetToken.key)
-	assert.True(t, user.resetKeyAt.After(t0))
-	assert.True(t, user.resetKeyAt.Before(t1))
+	assert.True(t, resetToken.createdAt.Unix() >= t0.Unix())
+	assert.True(t, resetToken.createdAt.Unix() <= t1.Unix())
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 2)
 }
@@ -194,7 +194,6 @@ func TestResetPassword(t *testing.T) {
 	assert.Nil(t, err)
 
 	assert.Equal(t, "", user.resetKey)
-	assert.True(t, user.resetKeyAt.Equal(time.Time{}))
 
 	_, err = auth.Signin("dario.freire@gmail.com", "123")
 	assert.NotNil(t, err)

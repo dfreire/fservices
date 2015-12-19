@@ -24,7 +24,6 @@ type privateUser struct {
 	confirmationKey string
 	confirmedAt     time.Time
 	resetKey        string
-	resetKeyAt      time.Time
 }
 
 type store interface {
@@ -33,7 +32,7 @@ type store interface {
 	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
 	removeUser(userId string) error
 	setUserConfirmedAt(userId string, confirmedAt time.Time) error
-	setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error
+	setUserResetKey(userId, resetKey string) error
 	setUserHashedPass(userId, hashedPass string) error
 	setUserEmail(userId, email string) error
 	getUserId(email string) (userId string, err error)
@@ -67,7 +66,6 @@ func (self storePg) createSchema() error {
 		   confirmationKey CHAR(36) NOT NULL,
 		   confirmedAt     TIMESTAMPTZ,
 		   resetKey        CHAR(36),
-		   resetKeyAt      TIMESTAMPTZ,
 
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
@@ -122,11 +120,11 @@ func (self storePg) setUserConfirmedAt(userId string, confirmedAt time.Time) err
 	return err
 }
 
-func (self storePg) setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error {
+func (self storePg) setUserResetKey(userId, resetKey string) error {
 	update := `
 		UPDATE auth.user
-		SET resetKey = $1, resetKeyAt = $2
-		WHERE id = $3;
+		SET resetKey = $1
+		WHERE id = $2;
 	`
 
 	stmt, err := self.db.Prepare(update)
@@ -134,14 +132,14 @@ func (self storePg) setUserResetKey(userId, resetKey string, resetKeyAt time.Tim
 		return err
 	}
 
-	_, err = stmt.Exec(resetKey, resetKeyAt, userId)
+	_, err = stmt.Exec(resetKey, userId)
 	return err
 }
 
 func (self storePg) setUserHashedPass(userId, hashedPass string) error {
 	update := `
 		UPDATE auth.user
-		SET hashedPass = $1, resetKey = NULL, resetKeyAt = NULL
+		SET hashedPass = $1, resetKey = NULL
 		WHERE id = $2;
 	`
 
@@ -184,14 +182,13 @@ func (self storePg) getPrivateUser(userId string) (user privateUser, err error) 
 	user.id = userId
 
 	query := `
-		SELECT createdAt, email, hashedPass, lang, confirmationKey, confirmedAt, resetKey, resetKeyAt
+		SELECT createdAt, email, hashedPass, lang, confirmationKey, confirmedAt, resetKey
 		FROM auth.user
 		WHERE id = $1;
 	`
 
 	var scanConfirmedAt pq.NullTime
 	var scanResetKey sql.NullString
-	var scanResetKeyAt pq.NullTime
 
 	err = self.db.QueryRow(query, userId).Scan(
 		&user.createdAt,
@@ -201,7 +198,6 @@ func (self storePg) getPrivateUser(userId string) (user privateUser, err error) 
 		&user.confirmationKey,
 		&scanConfirmedAt,
 		&scanResetKey,
-		&scanResetKeyAt,
 	)
 
 	if scanConfirmedAt.Valid {
@@ -209,9 +205,6 @@ func (self storePg) getPrivateUser(userId string) (user privateUser, err error) 
 	}
 	if scanResetKey.Valid {
 		user.resetKey = scanResetKey.String
-	}
-	if scanResetKeyAt.Valid {
-		user.resetKeyAt = scanResetKeyAt.Time
 	}
 
 	return
