@@ -343,3 +343,24 @@ func TestChangeUserPassword(t *testing.T) {
 	_, err = auth.Signin("dario.freire@gmail.com", "abc")
 	assert.Nil(t, err)
 }
+
+func TestChangeUserEmail(t *testing.T) {
+	auth, store, _ := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+
+	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+
+	userId1, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId1)
+
+	err = auth.ChangeUserEmail(adminKey, userId1, "dario.freire+changed@gmail.com")
+	assert.Nil(t, err)
+
+	_, err = store.getUserId("dario.freire@gmail.com")
+	assert.NotNil(t, err)
+
+	userId2, err := store.getUserId("dario.freire+changed@gmail.com")
+	assert.Nil(t, err)
+	assert.Equal(t, userId1, userId2)
+}

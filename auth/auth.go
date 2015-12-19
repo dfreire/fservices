@@ -26,7 +26,7 @@ type Auth interface {
 	GetUsers(adminKey string) ([]User, error)
 	CreateUser(adminKey, email, password, lang string) error
 	ChangeUserPassword(adminKey, userId, newPassword string) error
-	// ChangeUserEmail(adminKey, userId, newEmail string) error
+	ChangeUserEmail(adminKey, userId, newEmail string) error
 	// RemoveUser(adminKey, userId string) error
 
 	// RemoveExpiredConfirmationKeys(maxAge time.Duration) error
@@ -282,6 +282,14 @@ func (self authImpl) ChangeUserPassword(adminKey, userId, newPassword string) er
 	}
 
 	return self.store.setUserHashedPass(userId, string(hashedPass))
+}
+
+func (self authImpl) ChangeUserEmail(adminKey, userId, newEmail string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	return self.store.setUserEmail(userId, newEmail)
 }
 
 func (self authImpl) createUser(email, password, lang string, isConfirmed bool) (confirmationKey string, err error) {
