@@ -71,7 +71,7 @@ func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationTok
 		return
 	}
 
-	user, err := self.store.getUser(userId)
+	user, err := self.store.getPrivateUser(userId)
 	if err != nil {
 		return
 	}
@@ -90,7 +90,7 @@ func (self authImpl) ConfirmSignup(confirmationTokenStr string) error {
 		return err
 	}
 
-	user, err := self.store.getUser(userId)
+	user, err := self.store.getPrivateUser(userId)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func (self authImpl) Signin(email, password string) (sessionTokenStr string, err
 		return
 	}
 
-	user, err := self.store.getUser(userId)
+	user, err := self.store.getPrivateUser(userId)
 	if err != nil {
 		return
 	}
@@ -135,7 +135,7 @@ func (self authImpl) ForgotPasword(email, lang string) (resetToken string, err e
 		return
 	}
 
-	user, err := self.store.getUser(userId)
+	user, err := self.store.getPrivateUser(userId)
 	if err != nil {
 		return
 	}
@@ -166,7 +166,7 @@ func (self authImpl) ResetPassword(resetTokenStr, newPassword string) error {
 		return err
 	}
 
-	user, err := self.store.getUser(userId)
+	user, err := self.store.getPrivateUser(userId)
 	if err != nil {
 		return err
 	}
@@ -198,7 +198,7 @@ func (self authImpl) ChangePassword(sessionTokenStr, oldPassword, newPassword st
 		return err
 	}
 
-	user, err := self.store.getUser(sessionToken.userId)
+	user, err := self.store.getPrivateUser(sessionToken.userId)
 	if err != nil {
 		return err
 	}
@@ -221,7 +221,7 @@ func (self authImpl) ChangeEmail(sessionTokenStr, password, newEmail string) err
 		return err
 	}
 
-	user, err := self.store.getUser(sessionToken.userId)
+	user, err := self.store.getPrivateUser(sessionToken.userId)
 	if err != nil {
 		return err
 	}

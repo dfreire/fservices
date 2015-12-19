@@ -7,7 +7,15 @@ import (
 	"github.com/lib/pq"
 )
 
-type user struct {
+type User struct {
+	Id          string
+	CreatedAt   time.Time
+	Email       string
+	Lang        string
+	ConfirmedAt time.Time
+}
+
+type privateUser struct {
 	id              string
 	createdAt       time.Time
 	email           string
@@ -17,14 +25,6 @@ type user struct {
 	confirmedAt     time.Time
 	resetKey        string
 	resetKeyAt      time.Time
-}
-
-type User struct {
-	Id          string
-	CreatedAt   time.Time
-	Email       string
-	Lang        string
-	ConfirmedAt time.Time
 }
 
 type store interface {
@@ -37,7 +37,7 @@ type store interface {
 	setUserHashedPass(userId, hashedPass string) error
 	setUserEmail(userId, email string) error
 	getUserId(email string) (userId string, err error)
-	getUser(userId string) (user user, err error)
+	getPrivateUser(userId string) (user privateUser, err error)
 	getAllUsers() (users []User, err error)
 
 	removeUnconfirmedUsersCreatedBefore(date time.Time) error
@@ -180,7 +180,7 @@ func (self storePg) getUserId(email string) (userId string, err error) {
 	return
 }
 
-func (self storePg) getUser(userId string) (user user, err error) {
+func (self storePg) getPrivateUser(userId string) (user privateUser, err error) {
 	user.id = userId
 
 	query := `

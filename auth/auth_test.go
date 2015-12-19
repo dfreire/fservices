@@ -61,7 +61,7 @@ func TestSignup(t *testing.T) {
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "dario.freire@gmail.com", confirmationToken.email)
@@ -102,7 +102,7 @@ func TestConfirmSignup(t *testing.T) {
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 
 	assert.True(t, user.confirmedAt.After(t0))
@@ -158,7 +158,7 @@ func TestForgotPassword(t *testing.T) {
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "dario.freire@gmail.com", resetToken.email)
@@ -190,7 +190,7 @@ func TestResetPassword(t *testing.T) {
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 
 	assert.Equal(t, "", user.resetKey)
@@ -294,7 +294,7 @@ func TestCreateUser(t *testing.T) {
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, user.id)
 	assert.True(t, user.createdAt.After(t0))
@@ -366,7 +366,7 @@ func TestRemoveUser(t *testing.T) {
 	_, err = auth.Signin("dario.freire@gmail.com", "123")
 	assert.NotNil(t, err)
 
-	_, err = store.getUser(userId)
+	_, err = store.getPrivateUser(userId)
 	assert.NotNil(t, err)
 }
 
@@ -385,7 +385,7 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 
-	user, err := store.getUser(userId)
+	user, err := store.getPrivateUser(userId)
 	assert.Nil(t, err)
 	assert.NotEmpty(t, user.id)
 	assert.True(t, user.createdAt.After(t0))
@@ -399,6 +399,6 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 	err = auth.RemoveUnconfirmedUsers(cfg.AdminKey)
 	assert.Nil(t, err)
 
-	_, err = store.getUser(userId)
+	_, err = store.getPrivateUser(userId)
 	assert.NotNil(t, err)
 }
