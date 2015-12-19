@@ -28,9 +28,9 @@ type User struct {
 }
 
 type session struct {
-	id     string
-	userId string
-	idleAt time.Time
+	id         string
+	userId     string
+	activityAt time.Time
 }
 
 type store interface {
@@ -46,7 +46,7 @@ type store interface {
 	getUser(userId string) (user user, err error)
 	getAllUsers() (users []User, err error)
 
-	createSession(sessionId, userId string, idleAt time.Time) error
+	createSession(sessionId, userId string, activityAt time.Time) error
 	removeSession(sessionId string) error
 	getSession(sessionId string) (session session, err error)
 
@@ -70,15 +70,15 @@ func (self storePg) createSchema() error {
 		CREATE TYPE auth.lang AS ENUM ('pt_PT', 'en_US');
 
 		CREATE TABLE auth.user (
-		   id               CHAR(36) NOT NULL,
-		   createdAt        TIMESTAMPTZ NOT NULL,
-		   email            TEXT NOT NULL,
-		   hashedPass       TEXT NOT NULL,
-		   lang             auth.lang NOT NULL,
-		   confirmationKey  CHAR(36) NOT NULL,
-		   confirmedAt      TIMESTAMPTZ,
-		   resetKey         CHAR(36),
-		   resetKeyAt       TIMESTAMPTZ,
+		   id              CHAR(36) NOT NULL,
+		   createdAt       TIMESTAMPTZ NOT NULL,
+		   email           TEXT NOT NULL,
+		   hashedPass      TEXT NOT NULL,
+		   lang            auth.lang NOT NULL,
+		   confirmationKey CHAR(36) NOT NULL,
+		   confirmedAt     TIMESTAMPTZ,
+		   resetKey        CHAR(36),
+		   resetKeyAt      TIMESTAMPTZ,
 
 		   CONSTRAINT pk_auth_user PRIMARY KEY (id)
 		);
@@ -88,7 +88,7 @@ func (self storePg) createSchema() error {
 		CREATE TABLE auth.session (
 			id         CHAR(36) NOT NULL,
 			userId     CHAR(36) NOT NULL,
-			idleAt     TIMESTAMPTZ NOT NULL,
+			activityAt TIMESTAMPTZ NOT NULL,
 
 			CONSTRAINT pk_auth_session PRIMARY KEY (id),
 			CONSTRAINT fk_auth_session_userId FOREIGN KEY (userId) REFERENCES auth.user(id)
@@ -288,10 +288,10 @@ func (self storePg) getAllUsers() (users []User, err error) {
 	return
 }
 
-func (self storePg) createSession(sessionId, userId string, idleAt time.Time) error {
+func (self storePg) createSession(sessionId, userId string, activityAt time.Time) error {
 	insert := `
 		INSERT INTO auth.session
-		(id, userId, idleAt)
+		(id, userId, activityAt)
 		VALUES
 		($1, $2, $3);
 	`
@@ -301,7 +301,7 @@ func (self storePg) createSession(sessionId, userId string, idleAt time.Time) er
 		return err
 	}
 
-	_, err = stmt.Exec(sessionId, userId, idleAt)
+	_, err = stmt.Exec(sessionId, userId, activityAt)
 	return err
 }
 
@@ -323,11 +323,11 @@ func (self storePg) removeSession(sessionId string) error {
 func (self storePg) getSession(sessionId string) (session session, err error) {
 	session.id = sessionId
 	query := `
-		SELECT userId, idleAt
+		SELECT userId, activityAt
 		FROM auth.session
 		WHERE id = $1;
 	`
-	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.idleAt)
+	err = self.db.QueryRow(query, sessionId).Scan(&session.userId, &session.activityAt)
 	return
 }
 
@@ -342,7 +342,7 @@ func (self storePg) removeUnconfirmedUsersCreatedBefore(date time.Time) error {
 }
 
 func (self storePg) removeSessionsIdleBefore(date time.Time) error {
-	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE idleAt < $1;")
+	stmt, err := self.db.Prepare("DELETE FROM auth.session WHERE activityAt < $1;")
 	if err != nil {
 		return err
 	}
