@@ -364,3 +364,44 @@ func TestChangeUserEmail(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, userId1, userId2)
 }
+
+func TestRemoveUser(t *testing.T) {
+	auth, store, _ := createAuthService()
+	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+
+	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	userId, err := store.getUserId("dario.freire@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId)
+
+	sessionToken1, err := auth.Signin("dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	sessionId1, err := auth.(authImpl).parseSessionToken(sessionToken1)
+	assert.Nil(t, err)
+
+	_, err = store.getSession(sessionId1)
+	assert.Nil(t, err)
+
+	sessionToken2, err := auth.Signin("dario.freire@gmail.com", "123")
+	assert.Nil(t, err)
+
+	sessionId2, err := auth.(authImpl).parseSessionToken(sessionToken2)
+	assert.Nil(t, err)
+
+	_, err = store.getSession(sessionId2)
+	assert.Nil(t, err)
+
+	assert.NotEqual(t, sessionId1, sessionId2)
+
+	assert.Nil(t, auth.RemoveUser(adminKey, userId))
+
+	_, err = store.getUser(userId)
+	assert.NotNil(t, err)
+
+	_, err = store.getSession(sessionId1)
+	assert.NotNil(t, err)
+
+	_, err = store.getSession(sessionId2)
+	assert.NotNil(t, err)
+}

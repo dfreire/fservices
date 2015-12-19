@@ -37,6 +37,7 @@ type store interface {
 	createSchema() error
 
 	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
+	removeUser(userId string) error
 	setUserConfirmedAt(userId string, confirmedAt time.Time) error
 	setUserResetKey(userId, resetKey string, resetKeyAt time.Time) error
 	setUserHashedPass(userId, hashedPass string) error
@@ -88,6 +89,8 @@ func (self storePg) createSchema() error {
 			CONSTRAINT pk_auth_session PRIMARY KEY (id),
 			CONSTRAINT fk_auth_session_userId FOREIGN KEY (userId) REFERENCES auth.user(id)
 		);
+
+		CREATE INDEX idx_auth_session_userId ON auth.session (userId);
 	`
 
 	_, err := self.db.Exec(schema)
@@ -109,6 +112,36 @@ func (self storePg) createUser(userId string, createdAt time.Time, email, hashed
 
 	_, err = stmt.Exec(userId, createdAt, email, hashedPass, lang, confirmationKey)
 	return err
+}
+
+func (self storePg) removeUser(userId string) error {
+	tx, err := self.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmtSession, err := tx.Prepare("DELETE FROM auth.session WHERE userId = $1;")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmtSession.Exec(userId)
+	if err != nil {
+		return err
+	}
+
+	stmtUser, err := tx.Prepare("DELETE FROM auth.user WHERE id = $1;")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmtUser.Exec(userId)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
 }
 
 func (self storePg) setUserConfirmedAt(userId string, confirmedAt time.Time) error {
