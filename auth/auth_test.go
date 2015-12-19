@@ -2,6 +2,7 @@ package auth
 
 import (
 	"database/sql"
+	"os"
 	"testing"
 	"time"
 
@@ -12,25 +13,39 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func createAuthService() (Auth, store, *mailermock.MailerMock) {
-	var authConfig AuthConfig
-	_, err := toml.DecodeFile("auth_test.toml", &authConfig)
-	util.PanicIfNotNil(err)
+var cfg AuthConfig
 
+func TestMain(m *testing.M) {
+	setup()
+	retCode := m.Run()
+	teardown()
+	os.Exit(retCode)
+}
+
+func setup() {
+	_, err := toml.DecodeFile("auth_test.toml", &cfg)
+	util.PanicIfNotNil(err)
+}
+
+func teardown() {
+}
+
+func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	db, err := sql.Open("postgres", "postgres://drome:@localhost/fservices_test?sslmode=disable")
 	util.PanicIfNotNil(err)
-	storePg := NewStorePg(db)
 
 	_, err = db.Exec(`
 		CREATE SCHEMA IF NOT EXISTS auth;
 		DROP SCHEMA auth CASCADE;
 	`)
 	util.PanicIfNotNil(err)
+
+	storePg := NewStorePg(db)
 	util.PanicIfNotNil(storePg.createSchema())
 
 	mailer := new(mailermock.MailerMock)
 
-	return NewAuth(authConfig, storePg, mailer), storePg, mailer
+	return NewAuth(cfg, storePg, mailer), storePg, mailer
 }
 
 func TestSignup(t *testing.T) {
@@ -295,11 +310,10 @@ func TestGetUsers(t *testing.T) {
 
 func TestCreateUser(t *testing.T) {
 	auth, store, _ := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
 	t0 := time.Now()
 
-	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
 
 	t1 := time.Now()
 
@@ -322,9 +336,8 @@ func TestCreateUser(t *testing.T) {
 
 func TestChangeUserPassword(t *testing.T) {
 	auth, store, _ := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
-	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
@@ -333,7 +346,7 @@ func TestChangeUserPassword(t *testing.T) {
 	_, err = auth.Signin("dario.freire@gmail.com", "123")
 	assert.Nil(t, err)
 
-	err = auth.ChangeUserPassword(adminKey, userId, "abc")
+	err = auth.ChangeUserPassword(cfg.AdminKey, userId, "abc")
 	assert.Nil(t, err)
 
 	_, err = auth.Signin("dario.freire@gmail.com", "123")
@@ -345,15 +358,14 @@ func TestChangeUserPassword(t *testing.T) {
 
 func TestChangeUserEmail(t *testing.T) {
 	auth, store, _ := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
-	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
 
 	userId1, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 	assert.NotEmpty(t, userId1)
 
-	err = auth.ChangeUserEmail(adminKey, userId1, "dario.freire+changed@gmail.com")
+	err = auth.ChangeUserEmail(cfg.AdminKey, userId1, "dario.freire+changed@gmail.com")
 	assert.Nil(t, err)
 
 	_, err = store.getUserId("dario.freire@gmail.com")
@@ -366,9 +378,8 @@ func TestChangeUserEmail(t *testing.T) {
 
 func TestRemoveUser(t *testing.T) {
 	auth, store, _ := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
-	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 	assert.NotEmpty(t, userId)
@@ -393,7 +404,7 @@ func TestRemoveUser(t *testing.T) {
 
 	assert.NotEqual(t, sessionId1, sessionId2)
 
-	assert.Nil(t, auth.RemoveUser(adminKey, userId))
+	assert.Nil(t, auth.RemoveUser(cfg.AdminKey, userId))
 
 	_, err = store.getUser(userId)
 	assert.NotNil(t, err)
@@ -407,7 +418,7 @@ func TestRemoveUser(t *testing.T) {
 
 func TestRemoveUnconfirmedUsers(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
+
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
 	t0 := time.Now()
@@ -431,7 +442,7 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 
 	time.Sleep(2 * time.Nanosecond)
 
-	err = auth.RemoveUnconfirmedUsers(adminKey)
+	err = auth.RemoveUnconfirmedUsers(cfg.AdminKey)
 	assert.Nil(t, err)
 
 	_, err = store.getUser(userId)
@@ -440,9 +451,8 @@ func TestRemoveUnconfirmedUsers(t *testing.T) {
 
 func TestRemoveIdleSessions(t *testing.T) {
 	auth, store, _ := createAuthService()
-	adminKey := "ba5a5c16-840a-4a01-8817-3799d0492551"
 
-	assert.Nil(t, auth.CreateUser(adminKey, "dario.freire@gmail.com", "123", "en_US"))
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
 	userId, err := store.getUserId("dario.freire@gmail.com")
 	assert.Nil(t, err)
 	assert.NotEmpty(t, userId)
@@ -458,7 +468,7 @@ func TestRemoveIdleSessions(t *testing.T) {
 
 	time.Sleep(2 * time.Nanosecond)
 
-	err = auth.RemoveIdleSessions(adminKey)
+	err = auth.RemoveIdleSessions(cfg.AdminKey)
 	assert.Nil(t, err)
 
 	_, err = store.getSession(sessionId)
