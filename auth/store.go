@@ -1,4 +1,4 @@
-package auth2
+package auth
 
 import (
 	"database/sql"
