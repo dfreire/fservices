@@ -52,11 +52,11 @@ func TestSignup(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
 	mailerMock.On("Send", mock.AnythingOfType("mailer.Mail")).Return(nil)
 
-	confirmationToken, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
+	confirmationTokenStr, err := auth.Signup("dario.freire@gmail.com", "123", "en_US")
 	assert.Nil(t, err)
-	assert.NotEmpty(t, confirmationToken)
+	assert.NotEmpty(t, confirmationTokenStr)
 
-	email, lang, confirmationKey, err := parseConfirmationToken(cfg.JwtKey, confirmationToken)
+	confirmationToken, err := parseConfirmationToken(cfg.JwtKey, confirmationTokenStr)
 	assert.Nil(t, err)
 
 	userId, err := store.getUserId("dario.freire@gmail.com")
@@ -64,10 +64,10 @@ func TestSignup(t *testing.T) {
 	user, err := store.getUser(userId)
 	assert.Nil(t, err)
 
-	assert.Equal(t, "dario.freire@gmail.com", email)
-	assert.Equal(t, "en_US", lang)
-	assert.Equal(t, confirmationKey, user.confirmationKey)
-	assert.NotEmpty(t, confirmationKey)
+	assert.Equal(t, "dario.freire@gmail.com", confirmationToken.email)
+	assert.Equal(t, "en_US", confirmationToken.lang)
+	assert.Equal(t, user.confirmationKey, confirmationToken.key)
+	assert.NotEmpty(t, confirmationToken.key)
 	assert.True(t, user.confirmedAt.Equal(time.Time{}))
 
 	mailerMock.AssertNumberOfCalls(t, "Send", 1)

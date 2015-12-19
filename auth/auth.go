@@ -81,13 +81,13 @@ func (self authImpl) ResendConfirmationMail(email, lang string) (confirmationTok
 	return self.sendConfirmationEmail(email, lang, user.confirmationKey)
 }
 
-func (self authImpl) ConfirmSignup(confirmationToken string) error {
-	email, _, tokenConfirmationKey, err := parseConfirmationToken(self.cfg.JwtKey, confirmationToken)
+func (self authImpl) ConfirmSignup(confirmationTokenStr string) error {
+	confirmationToken, err := parseConfirmationToken(self.cfg.JwtKey, confirmationTokenStr)
 	if err != nil {
 		return err
 	}
 
-	userId, err := self.store.getUserId(email)
+	userId, err := self.store.getUserId(confirmationToken.email)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (self authImpl) ConfirmSignup(confirmationToken string) error {
 		return err
 	}
 
-	if tokenConfirmationKey != user.confirmationKey {
+	if confirmationToken.key != user.confirmationKey {
 		return errors.New("The confirmation key is not valid.")
 	}
 
@@ -355,7 +355,7 @@ func (self authImpl) createUser(email, password, lang string, isConfirmed bool) 
 }
 
 func (self authImpl) sendConfirmationEmail(email, lang, confirmationKey string) (confirmationToken string, err error) {
-	confirmationToken, err = createConfirmationToken(self.cfg.JwtKey, email, lang, confirmationKey)
+	confirmationToken, err = createConfirmationToken(self.cfg.JwtKey, privateConfirmationToken{email, lang, confirmationKey})
 	if err != nil {
 		return
 	}

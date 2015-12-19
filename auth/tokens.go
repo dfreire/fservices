@@ -2,16 +2,22 @@ package auth
 
 import "github.com/dgrijalva/jwt-go"
 
-func createConfirmationToken(jwtKey, email, lang, confirmationKey string) (string, error) {
+type privateConfirmationToken struct {
+	email string
+	lang  string
+	key   string
+}
+
+func createConfirmationToken(jwtKey string, confirmationToken privateConfirmationToken) (string, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
-	token.Claims["email"] = email
-	token.Claims["lang"] = lang
-	token.Claims["confirmationKey"] = confirmationKey
+	token.Claims["email"] = confirmationToken.email
+	token.Claims["lang"] = confirmationToken.lang
+	token.Claims["key"] = confirmationToken.key
 	return token.SignedString([]byte(jwtKey))
 }
 
-func parseConfirmationToken(jwtKey, confirmationToken string) (email, lang, confirmationKey string, err error) {
-	token, err := jwt.Parse(confirmationToken, func(token *jwt.Token) (interface{}, error) {
+func parseConfirmationToken(jwtKey, confirmationTokenStr string) (confirmationToken privateConfirmationToken, err error) {
+	token, err := jwt.Parse(confirmationTokenStr, func(token *jwt.Token) (interface{}, error) {
 		return []byte(jwtKey), nil
 	})
 	if err != nil {
@@ -21,9 +27,9 @@ func parseConfirmationToken(jwtKey, confirmationToken string) (email, lang, conf
 		return
 	}
 
-	email = token.Claims["email"].(string)
-	lang = token.Claims["lang"].(string)
-	confirmationKey = token.Claims["confirmationKey"].(string)
+	confirmationToken.email = token.Claims["email"].(string)
+	confirmationToken.lang = token.Claims["lang"].(string)
+	confirmationToken.key = token.Claims["key"].(string)
 	return
 }
 
