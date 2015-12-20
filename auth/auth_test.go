@@ -32,12 +32,16 @@ func teardown() {
 
 func createAuthService() (Auth, store, *mailermock.MailerMock) {
 	db, err := sql.Open("postgres", "postgres://drome:@localhost/fservices_test?sslmode=disable")
+	// db, err := sql.Open("sqlite3", ":memory:")
 	util.PanicIfNotNil(err)
 
 	_, err = db.Exec(`
 		CREATE SCHEMA IF NOT EXISTS auth;
 		DROP SCHEMA auth CASCADE;
 	`)
+	// _, err = db.Exec(`
+	// 	DROP TABLE IF EXISTS auth_user;
+	// `)
 	util.PanicIfNotNil(err)
 
 	storePg := NewStorePg(db)
