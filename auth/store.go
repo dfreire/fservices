@@ -97,12 +97,12 @@ func (self storePg) createUser(userId string, createdAt time.Time, email, hashed
 }
 
 func (self storePg) removeUsers(userIds ...string) error {
-	placeholders := []string{}
-	var arguments []interface{}
+	placeholders := make([]string, len(userIds))
+	arguments := make([]interface{}, len(userIds))
 	for i, argument := range userIds {
 		s := strconv.Itoa(i + 1)
-		placeholders = append(placeholders, strings.Join([]string{"$", s}, ""))
-		arguments = append(arguments, argument)
+		placeholders[i] = strings.Join([]string{"$", s}, "")
+		arguments[i] = argument
 	}
 
 	delete := fmt.Sprintf("DELETE FROM auth.user WHERE id IN (%s)", strings.Join(placeholders, ","))
