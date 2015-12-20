@@ -40,7 +40,6 @@ type store interface {
 	getAllUsers() (users []User, err error)
 
 	removeUnconfirmedUsersCreatedBefore(date time.Time) error
-	// removeResetKeysIssuedBefore(date time.Time) error
 }
 
 type storePg struct {

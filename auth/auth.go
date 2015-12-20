@@ -29,7 +29,6 @@ type Auth interface {
 	//RemoveUsers(adminKey, userIds []string) error
 
 	RemoveUnconfirmedUsers(adminKey string) error
-	// RemoveExpiredResetKeys(adminKey string) error
 }
 
 type AuthConfig struct {
