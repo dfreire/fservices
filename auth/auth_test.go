@@ -349,26 +349,6 @@ func TestChangeUserEmail(t *testing.T) {
 	assert.Equal(t, userId1, userId2)
 }
 
-func TestRemoveUser(t *testing.T) {
-	auth, store, _ := createAuthService()
-
-	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire@gmail.com", "123", "en_US"))
-	userId, err := store.getUserId("dario.freire@gmail.com")
-	assert.Nil(t, err)
-	assert.NotEmpty(t, userId)
-
-	_, err = auth.Signin("dario.freire@gmail.com", "123")
-	assert.Nil(t, err)
-
-	assert.Nil(t, auth.RemoveUser(cfg.AdminKey, userId))
-
-	_, err = auth.Signin("dario.freire@gmail.com", "123")
-	assert.NotNil(t, err)
-
-	_, err = store.getPrivateUser(userId)
-	assert.NotNil(t, err)
-}
-
 func TestRemoveUsers(t *testing.T) {
 	auth, store, _ := createAuthService()
 
@@ -382,12 +362,20 @@ func TestRemoveUsers(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotEmpty(t, userId2)
 
-	assert.NotEqual(t, userId1, userId2)
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire+3@gmail.com", "qaz", "en_US"))
+	userId3, err := store.getUserId("dario.freire+3@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId3)
+
+	assert.NotEqual(t, userId1, userId2, userId3)
 
 	_, err = auth.Signin("dario.freire+1@gmail.com", "123")
 	assert.Nil(t, err)
 
 	_, err = auth.Signin("dario.freire+2@gmail.com", "abc")
+	assert.Nil(t, err)
+
+	_, err = auth.Signin("dario.freire+3@gmail.com", "qaz")
 	assert.Nil(t, err)
 
 	assert.Nil(t, auth.RemoveUsers(cfg.AdminKey, userId1, userId2))
@@ -397,6 +385,9 @@ func TestRemoveUsers(t *testing.T) {
 
 	_, err = auth.Signin("dario.freire+2@gmail.com", "abc")
 	assert.NotNil(t, err)
+
+	_, err = auth.Signin("dario.freire+3@gmail.com", "qaz")
+	assert.Nil(t, err)
 }
 
 func TestRemoveUnconfirmedUsers(t *testing.T) {

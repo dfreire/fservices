@@ -33,7 +33,6 @@ type store interface {
 	createSchema() error
 
 	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
-	removeUser(userId string) error
 	removeUsers(userIds ...string) error
 	setUserConfirmedAt(userId string, confirmedAt time.Time) error
 	setUserResetKey(userId, resetKey string) error
@@ -94,16 +93,6 @@ func (self storePg) createUser(userId string, createdAt time.Time, email, hashed
 	}
 
 	_, err = stmt.Exec(userId, createdAt, email, hashedPass, lang, confirmationKey)
-	return err
-}
-
-func (self storePg) removeUser(userId string) error {
-	stmt, err := self.db.Prepare("DELETE FROM auth.user WHERE id = $1;")
-	if err != nil {
-		return err
-	}
-
-	_, err = stmt.Exec(userId)
 	return err
 }
 
