@@ -369,6 +369,36 @@ func TestRemoveUser(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestRemoveUsers(t *testing.T) {
+	auth, store, _ := createAuthService()
+
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire+1@gmail.com", "123", "en_US"))
+	userId1, err := store.getUserId("dario.freire+1@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId1)
+
+	assert.Nil(t, auth.CreateUser(cfg.AdminKey, "dario.freire+2@gmail.com", "abc", "en_US"))
+	userId2, err := store.getUserId("dario.freire+2@gmail.com")
+	assert.Nil(t, err)
+	assert.NotEmpty(t, userId2)
+
+	assert.NotEqual(t, userId1, userId2)
+
+	_, err = auth.Signin("dario.freire+1@gmail.com", "123")
+	assert.Nil(t, err)
+
+	_, err = auth.Signin("dario.freire+2@gmail.com", "abc")
+	assert.Nil(t, err)
+
+	assert.Nil(t, auth.RemoveUsers(cfg.AdminKey, userId1, userId2))
+
+	_, err = auth.Signin("dario.freire+1@gmail.com", "123")
+	assert.NotNil(t, err)
+
+	_, err = auth.Signin("dario.freire+2@gmail.com", "abc")
+	assert.NotNil(t, err)
+}
+
 func TestRemoveUnconfirmedUsers(t *testing.T) {
 	auth, store, mailerMock := createAuthService()
 

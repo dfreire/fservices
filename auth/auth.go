@@ -26,7 +26,7 @@ type Auth interface {
 	ChangeUserPassword(adminKey, userId, newPassword string) error
 	ChangeUserEmail(adminKey, userId, newEmail string) error
 	RemoveUser(adminKey, userId string) error
-	//RemoveUsers(adminKey, userIds []string) error
+	RemoveUsers(adminKey string, userIds ...string) error
 
 	RemoveUnconfirmedUsers(adminKey string) error
 }
@@ -276,6 +276,14 @@ func (self authImpl) RemoveUser(adminKey, userId string) error {
 	}
 
 	return self.store.removeUser(userId)
+}
+
+func (self authImpl) RemoveUsers(adminKey string, userIds ...string) error {
+	if adminKey != self.cfg.AdminKey {
+		return errors.New("Unauthorized")
+	}
+
+	return self.store.removeUsers(userIds...)
 }
 
 func (self authImpl) RemoveUnconfirmedUsers(adminKey string) error {

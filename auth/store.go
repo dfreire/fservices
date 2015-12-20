@@ -2,6 +2,9 @@ package auth
 
 import (
 	"database/sql"
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/lib/pq"
@@ -31,6 +34,7 @@ type store interface {
 
 	createUser(userId string, createdAt time.Time, email, hashedPass, lang, confirmationKey string) error
 	removeUser(userId string) error
+	removeUsers(userIds ...string) error
 	setUserConfirmedAt(userId string, confirmedAt time.Time) error
 	setUserResetKey(userId, resetKey string) error
 	setUserHashedPass(userId, hashedPass string) error
@@ -100,6 +104,25 @@ func (self storePg) removeUser(userId string) error {
 	}
 
 	_, err = stmt.Exec(userId)
+	return err
+}
+
+func (self storePg) removeUsers(userIds ...string) error {
+	placeholders := []string{}
+	var arguments []interface{}
+	for i, argument := range userIds {
+		s := strconv.Itoa(i + 1)
+		placeholders = append(placeholders, strings.Join([]string{"$", s}, ""))
+		arguments = append(arguments, argument)
+	}
+
+	delete := fmt.Sprintf("DELETE FROM auth.user WHERE id IN (%s)", strings.Join(placeholders, ","))
+	stmt, err := self.db.Prepare(delete)
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(arguments...)
 	return err
 }
 
