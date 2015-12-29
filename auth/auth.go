@@ -39,6 +39,7 @@ type AuthConfig struct {
 	ConfirmationEmail      AuthMailConfig
 	ResetPasswordEmail     AuthMailConfig
 }
+
 type AuthMailConfig map[string]struct {
 	Subject string
 	Body    string
